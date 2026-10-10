@@ -1,0 +1,17 @@
+import { createRequire } from 'node:module';
+import { mkdir } from 'node:fs/promises';
+const require = createRequire(new URL('../frontend/package.json',import.meta.url));
+const {chromium}=require('@playwright/test');
+await mkdir(new URL('../data/screenshots/',import.meta.url),{recursive:true});
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:8000');
+await page.getByRole('heading',{name:'创建实践工作区'}).waitFor();
+await page.screenshot({path:new URL('../data/screenshots/desktop.png',import.meta.url).pathname.replace(/^\//,''),fullPage:true});
+await page.setViewportSize({width:390,height:844});
+await page.screenshot({path:new URL('../data/screenshots/mobile.png',import.meta.url).pathname.replace(/^\//,''),fullPage:true});
+const layout=await page.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth}));
+console.log(JSON.stringify({production_title:await page.title(),layout,errors}));
+if(errors.length||layout.documentWidth>layout.width)process.exitCode=1;
+await browser.close();

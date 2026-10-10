@@ -1,0 +1,13 @@
+type Row=Record<string,any>;
+export default function ResumeHarness({audit}:{audit:Row}){
+ const map=audit.project_map;const value=audit.selection?.project_value;
+ const last=audit.reviews?.slice(-1)[0];
+ return <>
+ {value?.product_flow?.length>0&&<details><summary>项目整体架构与闭环</summary><p>{value.product_flow.join(' → ')}</p>{[...(value.architecture||[]),...(value.key_chains||[])].map((c:Row,i:number)=><article key={i}><strong>{c.name}</strong><p>{c.steps.join(' → ')}</p><small>{c.source_refs.join('、')}</small>{c.limitations?.length>0&&<p>待核对：{c.limitations.join('；')}</p>}</article>)}</details>}
+ {audit.job_evidence?.length>0&&<details><summary>JD问题与候选证据</summary>{audit.job_evidence.map((q:Row,i:number)=><article key={i}><strong>{q.requirement}</strong><p>{q.question}</p><small>{q.status==='unconfirmed'?'尚未找到候选证据':'候选证据已检索，具体匹配见选题依据'} · {q.candidate_evidence.length} 段</small><p>{q.note}</p></article>)}</details>}
+ {audit.selection?.outline?.length>0&&<details><summary>简历叙述大纲</summary>{audit.selection.outline.map((s:string,i:number)=><p key={i}>{s}</p>)}</details>}
+ {last?.perspectives&&<details><summary>独立双评审结果</summary>{last.perspectives.map((r:Row,i:number)=><article key={i}><strong>{r.perspective==='hr'?'HR':'技术面试官'}：{r.error?'调用／格式失败':r.approved?'模型通过':'模型未通过'}</strong>{r.issues?.map((issue:string,j:number)=><p key={j}>{issue}</p>)}</article>)}<p>最终状态还包含程序检查；角色通过不是人工认证。</p></details>}
+ {value&&<details><summary>项目背景与价值分析</summary><p>用户：{value.audience||'待确认'} · 场景：{value.scenario||'待确认'}</p><p><strong>项目背景：</strong>{value.background||'材料不足'}</p><p><strong>价值总结：</strong>{value.value_summary||'材料不足'}</p>{value.claims?.map((c:Row,i:number)=><article key={i}><h4>{c.statement}</h4><p>机制链路：{c.mechanism_chain.join(' → ')}</p><small>{c.evidence_level} · {c.source_refs.join('、')}</small>{c.limitations?.length>0&&<p>边界：{c.limitations.join('；')}</p>}</article>)}{value.uncertainties?.length>0&&<p>待核对：{value.uncertainties.join('；')}</p>}</details>}
+ {map&&<details><summary>材料覆盖与模型用量</summary><p>{map.coverage.length} 个Wiki片段已进入分析，{map.batches} 个批次，{map.cache_hits} 个批次复用缓存。{map.note}</p>{map.unusable_pages?.length>0&&<p>未进入分析的失败／空白页面：{map.unusable_pages.join('、')}</p>}<p>本次实际模型请求：{audit.harness?.calls?.length??'未知'}；用量缺失表示服务未返回，不等于零。</p>{audit.harness?.usage?.map((u:Row,i:number)=><p key={i}>{u.stage}：输入 {u.usage?.prompt_tokens??'未知'} / 输出 {u.usage?.completion_tokens??'未知'} Token</p>)}<details><summary>逐片段覆盖记录</summary><pre>{JSON.stringify(map.coverage,null,2)}</pre></details></details>}
+ </>;
+}

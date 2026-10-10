@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+httpx
+pydantic
+python-dotenv
+langgraph
+langgraph-checkpoint-sqlite
+pytest
+websockets

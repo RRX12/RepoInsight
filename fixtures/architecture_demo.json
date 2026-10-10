@@ -1,0 +1,93 @@
+{
+  "report": {
+    "overview": {
+      "summary": "演示文档助手项目，不是上传仓库的分析。",
+      "current_architecture": "单Agent串行工作流，内部工具提供文档读取和报告生成。",
+      "modules": [
+        {
+          "name": "文档工作流",
+          "responsibility": "示例：读取文档、提取信息、生成报告",
+          "paths": [
+            "app/workflow.py"
+          ]
+        }
+      ],
+      "core_flows": [
+        {
+          "name": "文档到报告",
+          "description": "读取 → 提取 → 整理 → 输出",
+          "paths": [
+            "app/workflow.py"
+          ]
+        }
+      ],
+      "existing_capabilities": [
+        {
+          "name": "文档工作流",
+          "responsibility": "示例：读取文档、提取信息、生成报告",
+          "paths": [
+            "app/workflow.py"
+          ]
+        }
+      ],
+      "coverage_notes": [
+        "演示示例，未分析用户源码、未运行真实模型。"
+      ]
+    },
+    "directions": [
+      {
+        "title": "将重复领域工作流整理为可复用Skill",
+        "scope": "architecture",
+        "direction": "领域流程复用",
+        "necessity": "conditional",
+        "business_problem": "示例中多个报告任务重复相同提取步骤，是否真实重复需核查。",
+        "current_design": "提示与步骤集中于工作流。",
+        "why_now": "只有重复逻辑和维护成本得到证实时才值得抽取。",
+        "proposal": "在文档工作流层封装领域方法与输入输出约定。",
+        "affected_modules": [
+          "文档工作流"
+        ],
+        "source_paths": [
+          "app/workflow.py"
+        ],
+        "existing_solution_checked": "先检查已有模板与插件是否足够。",
+        "alternatives": "复用函数和模板；维持单工作流。",
+        "tradeoffs": "额外规范和版本维护成本。",
+        "validation_plan": "对两种报告任务比较复用范围、输出质量与修改成本。",
+        "jd_relation": "与Skill能力相关，但JD关键词不证明必要性。",
+        "assumptions": [
+          "真实重复任务与维护痛点尚待确认"
+        ]
+      }
+    ],
+    "jd_assessment": [
+      {
+        "requirement": "MCP",
+        "current_fit": "仅内部调用工具",
+        "recommendation": "not_needed",
+        "reason": "没有跨客户端复用需求，暂不建议引入。"
+      },
+      {
+        "requirement": "multi-agent",
+        "current_fit": "串行单Agent流程",
+        "recommendation": "not_needed",
+        "reason": "无可验证的独立子任务与并行收益，保持单Agent。"
+      }
+    ],
+    "no_change_reason": ""
+  },
+  "wiki": {
+    "wiki_structure": {
+      "title": "演示文档助手"
+    },
+    "generated_pages": {
+      "overview": {
+        "title": "示例架构",
+        "content": "演示单Agent文档处理工作流。",
+        "filePaths": [
+          "app/workflow.py"
+        ]
+      }
+    }
+  }
+}

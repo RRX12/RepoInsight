@@ -1,0 +1,11 @@
+{
+  "owner": "repocareer-demo",
+  "repo": "document-service",
+  "commit_sha": "demo-000000000000000000000000000000000001",
+  "description": "演示文档解析服务，仅用于离线练习，不是真实 GitHub 搜索结果",
+  "files": {
+    "README.md": "# Document service\n演示服务：接收文档、解析文本并用内容哈希缓存。上游已实现缓存，个人不能声称新增缓存。\n",
+    "app/service.py": "import hashlib\n\ncache = {}\n\ndef parse_document(content: bytes):\n    key = hashlib.sha256(content).hexdigest()\n    if key in cache:\n        return cache[key]\n    result = content.decode('utf-8')\n    cache[key] = result\n    return result\n",
+    "tests/test_service.py": "from app.service import parse_document\n\ndef test_utf8():\n    assert parse_document(b'hello') == 'hello'\n"
+  }
+}
