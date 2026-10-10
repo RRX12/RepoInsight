@@ -1,3 +1,9 @@
+## 当前简历质量分支
+
+2026-10-11：新增固定版本源码补证、结构化事实/正文、岗位调查与覆盖、独立审查和两种输出类型。Wiki版本未保证，不等于固定SHA源码。源码不执行。详见[产品验收](docs/PRODUCT.md)、[真实状态](docs/STATUS.md)、[实施/评测记录](docs/resume-quality-progress.md)。旧记录无需SQL迁移，保持预览导出。
+
+离线生产入口契约对比：`.venv/Scripts/python scripts/eval-resume-quality.py --compare-legacy --output data/resume-quality-offline.json`。真实只读烟测：追加`--real --workspace <工作区ID> --freeze-revision`；需要现有模型配置，会实际消耗API用量，不写历史业务记录。评测报告不自动评分或宣称质量提升。
+
 # RepoCareer
 
 当前首版流程：GitHub仓库链接 → 岗位名称与JD → DeepWiki-Open项目全貌 → 架构优化方向 → 对话讨论/更正 → 确认个人贡献 → 简历Markdown。

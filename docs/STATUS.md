@@ -1,3 +1,17 @@
+# 2026-10-11 当前状态（后文为历史记录）
+
+当前分支codex/resume-quality，起点ec2b8fce5ca58304573ff4d7b26b4465fe171715；本轮后端/前端/Skill/测试/fixture/评测脚本及文档已整理为提交，按用户新指令发布GitHub master；具体提交与推送状态以Git记录核对。启动命令不变：`.venv/Scripts/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000`；frontend中`npm run dev`。已确认无运行任务后重启8000本地服务，监听PID19308；首页200并加载新版bundle，OpenAPI含target接口。已完成隔离8001端到端验证。npm不在当前工具shell PATH时可用Codex依赖Node直接运行frontend/node_modules/typescript/bin/tsc、vite/bin/vite.js、@playwright/test/cli.js。
+
+已实现：GenerationContext/原子目标与JD去重/Run trace，固定SHA只读补证，SourceEvidence/Claim/Metric/结构化Draft，岗位中性调查与结构召回，宽候选/独立核验/覆盖/一次补证重选，独立双审/有界修复，逐段映射/可选成果/贡献模式与参考模式，历史导出兼容。无需SQL迁移，新字段存现有JSON；未追认历史Wiki或旧草稿的核验状态。贡献更正沿用历史与指纹失效保护。界面当前表单传给生成，追问显示在正文外。
+
+已验证：89项后端回归通过；TypeScript/Vite构建通过；Playwright 2 passed；实际新旧writer离线同输入对比通过（fixture控制流，非质量证据）。真实烟测已经执行并暴露结构、ID、状态判定和输出截断问题；一次跑完全流程的结果needs_review且正文剔除，未达到直接使用的语义质量标准。最新真实烟测因核验/选题覆盖契约失败；后续防锚定与unknown覆盖修复仅通过离线回归，真实质量未复验，详细证据见[优化进度](resume-quality-progress.md)。
+
+未完成/风险：真实新旧输出人工评分、跨仓库/跨岗位泛化验收；DeepWiki无固定ref；定向源码读取受范围预算限制，没有运行源项目测试；同模型双审可能漏错或过严。不存在账号凭证阻塞，本轮模型调用使用现有配置，密钥未写入文档。
+
+恢复先读AGENTS/PRODUCT/本状态，并核对Git；按需DECISIONS/BACKLOG。下一条可直接执行任务：查看data/resume-quality-real-delivery.json的trace/正文，人工核对所引固定SHA源码，填写质量评分；如失败按具体阶段定位，禁止取消事实guard凑正文。具体改动与限制见resume-quality-progress.md、离线对比见resume-quality-example.md。
+
+---
+
 # 当前真实状态与恢复
 
 最新修复：GitHub clone的git-upload-pack连接被重置；官方codeload下载成功，已增加带路径/体积检查的下载备用方式。2026-10-09，MultiAgentPPT重试已读取479文档并进入embedding阶段，Wiki/架构评审尚未完成。主应用PID24564/8000，DeepWiki PID21712/8002；旧进程记录为历史。31项pytest通过，覆盖下载路径安全、现有目录保护及错误分类。后续旧状态按时间保留，不代表当前仍未配置模型。

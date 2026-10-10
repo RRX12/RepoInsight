@@ -1,6 +1,6 @@
 import json
 import pytest
-from backend.app.resume_writer import write,checks
+from backend.app.resume_writer import write_legacy as write,checks
 
 GOOD='**项目简介：** 基于FastAPI构建文档筛选系统。\n\n## 技术亮点\n- **分层筛选**：按条件筛选，减少重复阅读。\n- **证据关联**：保留来源以核对结论。\n\n**项目成果：** 完成筛选与证据关联。'
 MATERIAL={'role':'后端','jd':'Celery RabbitMQ','overview':{'summary':'FastAPI文档筛选系统'},'user_optimizations':[]}

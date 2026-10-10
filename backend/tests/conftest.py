@@ -9,7 +9,9 @@ from backend.app.main import app
 from backend.app.db import Base, engine
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    # API fixtures use invented repositories, never perform live GitHub calls.
+    monkeypatch.setattr('backend.app.source_reader.SourceReader.resolve_revision',lambda self,repo,ref=None:{'commit_sha':'unresolved:github','status':'unresolved','error':'offline fixture'})
     with TestClient(app) as client:
         yield client
     # Keep schema/migration version stable, remove data in FK-safe reverse order.

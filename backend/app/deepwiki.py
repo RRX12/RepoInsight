@@ -64,7 +64,11 @@ class DeepWikiOpen:
             'provider':self.provider,'model':self.model,'language':'zh','excluded_dirs':['.git','node_modules','.venv','dist','build'],
             'excluded_files':['.env','.env.*','*.pem','*.key']}
     def cache(self,payload):
-        return self.call('GET','/api/wiki_cache',params={'owner':payload['owner'],'repo':payload['repo'],'repo_type':payload['type'],'language':'zh'})
+        cached=self.call('GET','/api/wiki_cache',params={'owner':payload['owner'],'repo':payload['repo'],'repo_type':payload['type'],'language':'zh'})
+        if isinstance(cached,dict) and cached:
+            # Sidecar contract has no commit/ref field: never invent version binding.
+            cached={**cached,'provenance':{'revision_status':'unknown' if payload['type']=='github' else 'uploaded_snapshot','cache_identity':{k:payload[k] for k in ('owner','repo','type')},'retrieved_at':time.time(),'note':'GitHub Wiki仅作定位线索；源码证据独立固定SHA'}}
+        return cached
     def wiki(self,snapshot,progress,persist,cancelled,existing_task=None):
         payload=self.repo_payload(snapshot)
         # Cache is keyed by immutable uploaded snapshot and workspace, never repo display name.

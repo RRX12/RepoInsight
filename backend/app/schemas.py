@@ -45,6 +45,14 @@ class ArtifactInput(Strict):
     type: Literal['task_pack','resume','interview_notes']
     idempotency_key: str = Field(min_length=1, max_length=100)
     writing_mode: Literal['reference','model'] = 'reference'
+    output_mode: Literal['project_reference','personal_resume'] = 'project_reference'
+    target_role: str | None = Field(default=None,max_length=1000)
+    target_jd: str | None = Field(default=None,max_length=20000)
+    target_dimensions: list[str] = Field(default_factory=list,max_length=6)
+
+class TargetInput(Strict):
+    role: str = Field(min_length=1,max_length=1000)
+    jd: str = Field(default='',max_length=20000)
 class ExperimentInput(Strict):
     contribution_id: str
     baseline_snapshot: str = Field(min_length=1)

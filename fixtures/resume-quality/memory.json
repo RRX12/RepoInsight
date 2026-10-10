@@ -1,0 +1,249 @@
+{
+  "kind": "synthetic_contract_fixture_not_cp_dance_gold_standard",
+  "material": {
+    "workspace_id": "offline",
+    "snapshot_id": "s",
+    "commit": "unresolved:fixture",
+    "repo": "example/demo",
+    "role": "AI工程师",
+    "jd": "多轮记忆",
+    "jd_version_id": "j",
+    "overview": {},
+    "user_optimizations": [],
+    "user_materials": [],
+    "experiments": [],
+    "wiki_pages": [
+      {
+        "title": "Memory",
+        "content": "角色记忆按版本更新，过期更新被拒绝。"
+      }
+    ],
+    "_full_wiki_pages": [
+      {
+        "page_id": "memory",
+        "title": "Memory",
+        "content": "角色记忆按版本更新，过期更新被拒绝。",
+        "filePaths": [
+          "memory.ts"
+        ]
+      }
+    ]
+  },
+  "responses": {
+    "ANALYZE": {
+      "facts": [
+        {
+          "capability": "记忆",
+          "mechanism": "版本拒绝",
+          "limitation": "仅文档",
+          "source_ref": "wiki:0:chunk:0:span:0"
+        }
+      ],
+      "uncertainties": []
+    },
+    "PRODUCT": {
+      "audience": "创作者",
+      "background": "角色记忆",
+      "value_summary": "保存角色经历"
+    },
+    "JD_PLAN": {
+      "requirements": [
+        {
+          "requirement_id": "r1",
+          "description": "多轮记忆",
+          "origin": "jd",
+          "question": "如何延续角色状态？",
+          "search_terms": [
+            "memory",
+            "记忆"
+          ]
+        }
+      ]
+    },
+    "DISCOVER": {
+      "claims": [
+        {
+          "id": "c1",
+          "statement": "角色记忆按版本更新，过期更新被拒绝。",
+          "evidence_ids": [
+            "wiki:0:chunk:0:span:0"
+          ],
+          "support": "insufficient",
+          "implementation_state": "implemented",
+          "attribution": "upstream",
+          "validation_level": "unknown"
+        },
+        {
+          "id": "c2",
+          "statement": "角色记忆按版本更新，过期更新被拒绝。",
+          "evidence_ids": [
+            "wiki:0:chunk:0:span:0"
+          ],
+          "support": "insufficient",
+          "implementation_state": "implemented",
+          "attribution": "upstream",
+          "validation_level": "unknown"
+        }
+      ],
+      "candidates": [
+        {
+          "candidate_id": "n1",
+          "title": "版本化记忆",
+          "mechanism": "拒绝过期更新",
+          "claim_ids": [
+            "c1"
+          ],
+          "requirement_ids": [
+            "r1"
+          ],
+          "reason": "状态连续性"
+        },
+        {
+          "candidate_id": "n2",
+          "title": "版本化记忆",
+          "mechanism": "拒绝过期更新",
+          "claim_ids": [
+            "c2"
+          ],
+          "requirement_ids": [
+            "r1"
+          ],
+          "reason": "状态连续性"
+        }
+      ]
+    },
+    "CLAIM_VERIFY": {
+      "claims": [
+        {
+          "id": "c1",
+          "statement": "角色记忆按版本更新，过期更新被拒绝。",
+          "evidence_ids": [
+            "wiki:0:chunk:0:span:0"
+          ],
+          "support": "supported",
+          "implementation_state": "implemented",
+          "attribution": "upstream",
+          "validation_level": "unknown"
+        },
+        {
+          "id": "c2",
+          "statement": "角色记忆按版本更新，过期更新被拒绝。",
+          "evidence_ids": [
+            "wiki:0:chunk:0:span:0"
+          ],
+          "support": "supported",
+          "implementation_state": "implemented",
+          "attribution": "upstream",
+          "validation_level": "unknown"
+        }
+      ]
+    },
+    "SELECT": {
+      "selected_ids": [
+        "n1"
+      ],
+      "reasons": {
+        "n1": "有版本机制证据"
+      },
+      "omitted": {
+        "n2": "避免重复"
+      },
+      "coverage": [
+        {
+          "requirement_id": "r1",
+          "status": "direct",
+          "claim_ids": [
+            "c1"
+          ],
+          "candidate_ids": [
+            "n1"
+          ]
+        }
+      ]
+    },
+    "WRITE": {
+      "output_mode": "project_reference",
+      "project_intro": {
+        "text": "角色记忆按版本更新，过期更新被拒绝。",
+        "claim_ids": [
+          "c1"
+        ]
+      },
+      "bullets": [
+        {
+          "id": "b1",
+          "title": "版本化记忆",
+          "candidate_ids": [
+            "n1"
+          ],
+          "text": "角色记忆按版本更新，过期更新被拒绝。",
+          "claim_ids": [
+            "c1"
+          ]
+        }
+      ],
+      "questions": []
+    },
+    "REVIEW_HR": {
+      "approved": true,
+      "feedback": []
+    },
+    "REVIEW_TECHNICAL": {
+      "approved": true,
+      "feedback": []
+    }
+  },
+  "legacy_responses": {
+    "ANALYZE": {
+      "facts": [
+        {
+          "capability": "记忆",
+          "mechanism": "版本拒绝",
+          "limitation": "仅文档",
+          "source_ref": "wiki:0:chunk:0:span:0"
+        }
+      ],
+      "uncertainties": []
+    },
+    "PRODUCT": {
+      "audience": "创作者",
+      "background": "角色记忆",
+      "value_summary": "保存角色经历"
+    },
+    "JD_PLAN": {
+      "questions": [
+        {
+          "requirement": "多轮记忆",
+          "question": "如何延续状态？",
+          "search_terms": [
+            "记忆"
+          ]
+        }
+      ]
+    },
+    "SELECT": {
+      "selected": [
+        {
+          "title": "版本化记忆",
+          "jd_relation": "状态连续性",
+          "hr_value": "与岗位相关",
+          "interview_focus": "拒绝过期更新",
+          "reason": "材料有依据",
+          "source_refs": [
+            "wiki:0:chunk:0:span:0"
+          ],
+          "state": "project_existing"
+        }
+      ]
+    },
+    "WRITE": "**项目简介：** 角色记忆系统。\n\n## 技术亮点\n- **版本化记忆** <!-- highlight:h1 -->：角色记忆按版本更新，拒绝过期写入。\n\n**项目成果：** 保留角色经历。",
+    "REVIEW_HR": {
+      "approved": true,
+      "issues": []
+    },
+    "REVIEW_TECHNICAL": {
+      "approved": true,
+      "issues": []
+    }
+  }
+}

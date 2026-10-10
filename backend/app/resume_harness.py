@@ -110,7 +110,7 @@ class Harness:
                            '不要仅列技术名称；source_ref必须使用提供的span.id（如wiki:0:chunk:0:span:0）。quote留空，程序按该编号填入原文，禁止自行改写引用。没有依据的动机留空，跨片段链路未证实时列uncertainties。\n'
                            +json.dumps(anchored, ensure_ascii=False)+'\nJSON schema:'+json.dumps(Mapping.model_json_schema(), ensure_ascii=False))
             key = digest({'version': VERSION, 'workspace': material.get('workspace_id'),
-                          'repo': material.get('repo'), 'snapshot': material.get('snapshot_id'),
+                          'repo': material.get('repo'), 'snapshot': material.get('_wiki_snapshot_id',material.get('snapshot_id')),
                           'model': self.model, 'prompt': instruction})
             path = self.cache_dir / (key+'.json') if self.cache_dir else None
             mapping = None
@@ -123,8 +123,9 @@ class Harness:
             if mapping is None:
                 try:
                     mapping = Mapping.model_validate(parse_json(self.call(instruction)))
-                except ValueError:
-                    raise ProviderError('Wiki分块分析字段无效，未将失败片段标为已分析', 'resume_mapping_invalid')
+                except ValueError as exc:
+                    detail='；'.join('.'.join(map(str,e['loc']))+':'+e['type'] for e in exc.errors(include_input=False)[:6]) if hasattr(exc,'errors') else type(exc).__name__
+                    raise ProviderError('Wiki分块分析字段无效：'+detail+'；未将失败片段标为已分析', 'resume_mapping_invalid')
             lookup = {c['id']: c for c in batch}
             anchors = {s['id']: s['content'] for c in batch for s in spans(c)}
             for attempt in range(2):
@@ -160,7 +161,7 @@ class Harness:
             uncertainties.extend(mapping.uncertainties)
             coverage.extend({'id': c['id'], 'title': c['title'], 'status': 'analyzed', 'cached': cached,
                              'start': c['start'], 'characters': len(c['content']),
-                             'facts': sum(f.source_ref == c['id'] for f in mapping.facts)} for c in batch)
+                             'facts': sum(f.source_ref == c['id'] or f.source_ref.startswith(c['id']+':span:') for f in mapping.facts)} for c in batch)
         # Never silently truncate the map at synthesis time either.
         compact = [{k: v for k, v in f.items() if k != 'quote'} for f in facts]
         if len(json.dumps(compact, ensure_ascii=False).encode('utf-8')) > 85000:

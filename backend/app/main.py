@@ -75,9 +75,13 @@ def save_repository_link(wid:str,body:RepositoryLinkInput,s=Depends(session)):
     if any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'请先等待或停止当前分析')
     url=f'https://github.com/{owner}/{repo}'
     previous=scoped(s,Snapshot,wid)
-    if previous and previous[-1].metadata_json.get('github_url')==url:return asdict(previous[-1])
-    snap=Snapshot(workspace_id=wid,owner=owner,repo=repo,commit_sha='unresolved:deepwiki-default-branch',
-        metadata_json={'mode':'github','source_kind':'github_link','github_url':url,'description':'GitHub链接，由DeepWiki-Open获取仓库'},
+    from .source_reader import SourceReader
+    reader=SourceReader(wid)
+    try:revision=reader.resolve_revision(owner+'/'+repo)
+    finally:reader.close()
+    if previous and previous[-1].metadata_json.get('github_url')==url and previous[-1].commit_sha==revision['commit_sha']:return asdict(previous[-1])
+    snap=Snapshot(workspace_id=wid,owner=owner,repo=repo,commit_sha=revision['commit_sha'],
+        metadata_json={'mode':'github','source_kind':'github_link','github_url':url,'revision':revision,'description':'GitHub链接；Wiki版本与独立源码证据分别核对'},
         coverage={'read_files':[],'omitted':[],'note':'仅保存链接，尚未获取源码；DeepWiki分析版本及引用需核对，不声称固定提交。'})
     s.add(snap);s.flush()
     for i in scoped(s,Improvement,wid):i.status='stale'
@@ -101,9 +105,9 @@ async def upload_repository(wid:str,request:Request,s=Depends(session)):
 @app.post('/api/workspaces/{wid}/architecture-runs')
 def architecture_run(wid:str,body:ArchitectureRunInput,s=Depends(session)):
     w=require(s,Workspace,wid);snap=require(s,Snapshot,body.snapshot_id,wid);jd=latest_jd(s,wid)
-    if not w.role.strip() or w.role=='待填写' or not jd or not jd.raw_text.strip():raise HTTPException(422,'请先填写岗位名称和JD')
+    if not w.role.strip() or w.role=='待填写':raise HTTPException(422,'请先填写岗位名称')
     if snap.metadata_json.get('source_kind') not in ('archive','github_link'):raise HTTPException(422,'请先保存GitHub仓库链接')
-    req={**body.model_dump(),'architecture':True,'role':w.role,'jd_version_id':jd.id,'jd_text':jd.raw_text}
+    req={**body.model_dump(),'architecture':True,'role':w.role,'jd_version_id':jd.id if jd else None,'jd_text':jd.raw_text if jd else '', 'target_origin':'jd' if jd and jd.raw_text.strip() else 'role_inferred'}
     old=s.scalar(select(Run).where(Run.workspace_id==wid,Run.idempotency_key==body.idempotency_key))
     if old:
         if old.request!=req:raise HTTPException(409,'幂等键对应的快照或岗位JD已变化')
@@ -118,11 +122,27 @@ def update_workspace(wid:str,body:WorkspaceInput,s=Depends(session)):
 @app.post('/api/workspaces/{wid}/jd-versions')
 def add_jd(wid:str,body:TextInput,s=Depends(session)):
     require(s,Workspace,wid); old=latest_jd(s,wid)
+    if old and old.raw_text==body.content:return asdict(old)
     terms=list(dict.fromkeys(re.findall(r'[A-Za-z][A-Za-z0-9+#._-]{1,30}|[\u4e00-\u9fff]{2,8}',body.content)))[:30]
     jd=JD(workspace_id=wid,raw_text=body.content,requirements=terms,version=(old.version+1 if old else 1),supersedes_id=old.id if old else None)
     s.add(jd); s.flush(); invalidate(s,wid)
     s.add(MemoryEvent(workspace_id=wid,entity_type='jd',entity_id=jd.id,operation='new_version',before=asdict(old) if old else {},after=asdict(jd)))
     return {**asdict(jd),'diff':{'added':list(set(terms)-set(old.requirements if old else [])),'removed':list(set(old.requirements if old else [])-set(terms))},'note':'只影响新候选/新方案排序与新稿选材；旧计划保留，贡献事实不变。'}
+
+def save_target(s,wid,role,jd_text):
+    w=require(s,Workspace,wid)
+    if not role.strip() or role=='待填写':raise HTTPException(422,'请填写岗位名称')
+    changed=w.role!=role;w.role=role;old=latest_jd(s,wid)
+    if (old.raw_text if old else '')!=jd_text:
+        jd=JD(workspace_id=wid,raw_text=jd_text,requirements=[],version=old.version+1 if old else 1,supersedes_id=old.id if old else None)
+        s.add(jd);s.flush();s.add(MemoryEvent(workspace_id=wid,entity_type='jd',entity_id=jd.id,operation='new_version',before=asdict(old) if old else {},after=asdict(jd)));changed=True
+    if changed:invalidate(s,wid)
+    return latest_jd(s,wid)
+
+@app.post('/api/workspaces/{wid}/target')
+def update_target(wid:str,body:TargetInput,s=Depends(session)):
+    jd=save_target(s,wid,body.role,body.jd)
+    return {'role':body.role,'jd_version_id':jd.id if jd else None,'target_origin':'jd' if body.jd else 'role_inferred'}
 @app.post('/api/workspaces/{wid}/repo-search')
 def search_repos(wid:str,demo:bool=True,s=Depends(session)):
     w=require(s,Workspace,wid); load_skill('repo_discovery')
@@ -191,11 +211,20 @@ def choose_improvement(iid:str,workspace_id:str,s=Depends(session)):
     i.status='selected'; s.get(Workspace,workspace_id).stage='practice'; invalidate(s,workspace_id); return asdict(i)
 @app.post('/api/workspaces/{wid}/artifacts')
 def new_artifact(wid:str,body:ArtifactInput,s=Depends(session)):
-    require(s,Workspace,wid)
+    w=require(s,Workspace,wid)
+    if body.type=='resume' and body.writing_mode!='model' and body.output_mode=='personal_resume':
+        raise HTTPException(422,'规则参考稿仅支持项目参考类型；个人贡献稿请使用模型写作')
+    if body.target_role is not None or body.target_jd is not None:
+        current=latest_jd(s,wid)
+        save_target(s,wid,body.target_role if body.target_role is not None else w.role,body.target_jd if body.target_jd is not None else (current.raw_text if current else ''))
     old=s.scalar(select(Artifact).where(Artifact.workspace_id==wid,Artifact.idempotency_key==body.idempotency_key))
     if old:
         if old.type != body.type: raise HTTPException(409,'幂等键已用于其他产物类型')
         if body.type=='resume' and (body.writing_mode=='model')!=any(c.get('kind')=='writing_review' for c in old.claims):raise HTTPException(409,'幂等键已用于不同简历生成方式')
+        audit=next((c for c in old.claims if c.get('kind')=='writing_review'),{})
+        ctx=audit.get('generation_context',{})
+        jd=latest_jd(s,wid)
+        if ctx and (ctx.get('output_mode')!=body.output_mode or ctx.get('target_dimensions',[])!=body.target_dimensions or ctx.get('role')!=w.role or ctx.get('jd_version_id')!=(jd.id if jd else None)):raise HTTPException(409,'幂等键对应的输出类型或目标已变化')
         return asdict(old)
     load_skill('resume_composition' if body.type != 'task_pack' else 'improvement_planning'); load_skill('claim_review')
     content,deps,claims,jd=compose(s,wid,body.type)
@@ -203,21 +232,42 @@ def new_artifact(wid:str,body:ArtifactInput,s=Depends(session)):
     if body.type=='resume' and body.writing_mode=='model':
         from .resume_writer import collect,write
         snap,material,fingerprint=collect(s,wid)
+        from .resume_contract import GenerationContext
+        from .source_reader import resolved
+        context=GenerationContext(workspace_id=wid,snapshot_id=snap.id,commit_sha=snap.commit_sha,revision_status='resolved' if resolved(snap.commit_sha) else 'content_hash_bound' if snap.commit_sha.startswith('archive-sha256:') else 'unresolved',role=material['role'],jd_version_id=material['jd_version_id'],target_origin='jd' if material['jd'] else 'role_inferred',material_fingerprint=fingerprint,output_mode=body.output_mode,target_dimensions=body.target_dimensions)
+        run_key='resume:'+body.idempotency_key
+        gen=s.scalar(select(Run).where(Run.workspace_id==wid,Run.idempotency_key==run_key))
+        if gen and gen.request.get('generation_context')!=context.model_dump():raise HTTPException(409,'重试输入版本已变化，请使用新的生成标识')
+        if gen and gen.status=='running':raise HTTPException(409,'该生成正在运行')
+        if not gen:gen=Run(workspace_id=wid,request={'resume_generation':True,'generation_context':context.model_dump()},idempotency_key=run_key,result={});s.add(gen);s.flush()
+        gen.status='running';gen.error=None;gen_id=gen.id
+        def progress(record,result):
+            with Session.begin() as ps:
+                r=require(ps,Run,gen_id,wid);r.steps=r.steps+[record];r.result={**r.result,**result}
+        material['_generation_context']=context.model_dump();material['_target_dimensions']=body.target_dimensions;material['_progress']=progress
         jd_id=jd.id if jd else None
         s.commit()  # Do not hold a SQLite snapshot throughout slow model calls.
-        content,audit=write(snap,material)
+        try:content,audit=write(snap,material)
+        except Exception as exc:
+            with Session.begin() as ps:
+                r=require(ps,Run,gen_id,wid);r.status='failed';r.error=str(exc)[:1000] if isinstance(exc,ProviderError) else '内部生成错误，阶段记录已保留'
+            raise
         s.expire_all()
         _,_,current_fingerprint=collect(s,wid)
-        if current_fingerprint!=fingerprint:raise HTTPException(409,'写作期间项目/JD/优化材料已更正，请根据最新材料重新生成')
+        if current_fingerprint!=fingerprint:
+            gen=require(s,Run,gen_id,wid);gen.status='failed';gen.error='生成期间输入已变更，未保存为当前版本';s.commit()
+            raise HTTPException(409,'写作期间项目/JD/优化材料已更正，请根据最新材料重新生成')
         old=s.scalar(select(Artifact).where(Artifact.workspace_id==wid,Artifact.idempotency_key==body.idempotency_key))
         if old:
             if not any(c.get('kind')=='writing_review' for c in old.claims):raise HTTPException(409,'幂等键已用于规则参考稿，请使用新的生成标识')
             return asdict(old)
         jd=s.get(JD,jd_id) if jd_id else None
         for claim in claims:claim['usage']='source_ledger_not_generated_text'
-        deps=list(dict.fromkeys(deps+[material['run_id']]+[e['id'] for e in material['user_materials']]+[e['id'] for e in material['experiments']]))
+        deps=list(dict.fromkeys(deps+[material['run_id'],gen_id]+[e['id'] for e in material['user_materials']]+[e['id'] for e in material['experiments']]))
         audit['material_sha256']=fingerprint
         claims.append(audit)
+        gen=require(s,Run,gen_id,wid);gen.status='completed';gen.result={**gen.result,'status':audit['status'],'generation_context':audit.get('generation_context',context.model_dump())}
+        audit['generation_run_id']=gen_id
         review_status='current' if audit['status']=='passed' else 'needs_review'
     version=sum(a.type==body.type for a in scoped(s,Artifact,wid))+1
     a=Artifact(workspace_id=wid,type=body.type,version=version,content=content,dependency_ids=deps,claims=claims,jd_version_id=jd.id if jd else None,idempotency_key=body.idempotency_key,review_status=review_status)
@@ -228,6 +278,10 @@ def artifact(aid:str,workspace_id:str,s=Depends(session)): return asdict(require
 def export(aid:str,workspace_id:str,s=Depends(session)):
     a=require(s,Artifact,aid,workspace_id)
     text=('> 此旧版本需重新检查；贡献、JD 或快照已更新。\n\n' if a.review_status=='needs_review' else '')+a.content
+    audit=next((c for c in a.claims if c.get('kind')=='writing_review'),{})
+    if audit:
+        if not audit.get('structured_draft'):text='> 历史稿没有逐句证据映射，未回填核验状态。\n\n'+text
+        elif audit.get('generation_context',{}).get('output_mode')=='project_reference':text='> 项目能力参考稿，上游能力不代表个人贡献；源码与Wiki核验范围请查看审查记录。\n\n'+text
     return Response(text,media_type='text/markdown',headers={'Content-Disposition':f'attachment; filename="{a.type}-v{a.version}.md"'})
 @app.post('/api/workspaces/{wid}/messages')
 def message(wid:str,body:TextInput,s=Depends(session)):
