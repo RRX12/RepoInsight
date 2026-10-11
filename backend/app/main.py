@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError, OperationalError
 from .db import *
 from .schemas import *
@@ -15,6 +15,8 @@ from .memory import *
 from .providers import GitHub, ModelProvider, ProviderError, demo_fixture, repo_name
 from .analysis import recover_runs, submit, still_executing
 from .agent import chat, SKILLS, load_skill
+from .artifact_service import create_artifact
+from .task_lifecycle import inline_active
 from .repository_upload import import_zip, MAX_ARCHIVE
 
 @asynccontextmanager
@@ -72,7 +74,7 @@ def save_repository_link(wid:str,body:RepositoryLinkInput,s=Depends(session)):
     require(s,Workspace,wid)
     owner,repo=repo_name(body.url)
     if not repo:raise HTTPException(422,'仓库名称无效')
-    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'请先等待或停止当前分析')
+    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'请先等待或停止当前分析')
     url=f'https://github.com/{owner}/{repo}'
     previous=scoped(s,Snapshot,wid)
     from .source_reader import SourceReader
@@ -92,7 +94,7 @@ def save_repository_link(wid:str,body:RepositoryLinkInput,s=Depends(session)):
 @app.post('/api/workspaces/{wid}/repository-upload')
 async def upload_repository(wid:str,request:Request,s=Depends(session)):
     require(s,Workspace,wid)
-    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'分析进行中，请先等待或取消后再上传新快照')
+    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'分析进行中，请先等待或取消后再上传新快照')
     if request.headers.get('content-type','').split(';')[0]!='application/zip':raise HTTPException(415,'请上传ZIP文件（application/zip）')
     raw=bytearray()
     async for chunk in request.stream():
@@ -112,7 +114,7 @@ def architecture_run(wid:str,body:ArchitectureRunInput,s=Depends(session)):
     if old:
         if old.request!=req:raise HTTPException(409,'幂等键对应的快照或岗位JD已变化')
         return asdict(old)
-    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'当前工作区已有运行中的分析')
+    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'当前工作区已有运行中的分析')
     r=Run(workspace_id=wid,request=req,idempotency_key=body.idempotency_key,result={'snapshot_id':snap.id});s.add(r);s.commit();submit(r.id);return asdict(r)
 @app.patch('/api/workspaces/{wid}')
 def update_workspace(wid:str,body:WorkspaceInput,s=Depends(session)):
@@ -123,21 +125,8 @@ def update_workspace(wid:str,body:WorkspaceInput,s=Depends(session)):
 def add_jd(wid:str,body:TextInput,s=Depends(session)):
     require(s,Workspace,wid); old=latest_jd(s,wid)
     if old and old.raw_text==body.content:return asdict(old)
-    terms=list(dict.fromkeys(re.findall(r'[A-Za-z][A-Za-z0-9+#._-]{1,30}|[\u4e00-\u9fff]{2,8}',body.content)))[:30]
-    jd=JD(workspace_id=wid,raw_text=body.content,requirements=terms,version=(old.version+1 if old else 1),supersedes_id=old.id if old else None)
-    s.add(jd); s.flush(); invalidate(s,wid)
-    s.add(MemoryEvent(workspace_id=wid,entity_type='jd',entity_id=jd.id,operation='new_version',before=asdict(old) if old else {},after=asdict(jd)))
+    jd=save_jd_version(s,wid,body.content);terms=jd.requirements
     return {**asdict(jd),'diff':{'added':list(set(terms)-set(old.requirements if old else [])),'removed':list(set(old.requirements if old else [])-set(terms))},'note':'只影响新候选/新方案排序与新稿选材；旧计划保留，贡献事实不变。'}
-
-def save_target(s,wid,role,jd_text):
-    w=require(s,Workspace,wid)
-    if not role.strip() or role=='待填写':raise HTTPException(422,'请填写岗位名称')
-    changed=w.role!=role;w.role=role;old=latest_jd(s,wid)
-    if (old.raw_text if old else '')!=jd_text:
-        jd=JD(workspace_id=wid,raw_text=jd_text,requirements=[],version=old.version+1 if old else 1,supersedes_id=old.id if old else None)
-        s.add(jd);s.flush();s.add(MemoryEvent(workspace_id=wid,entity_type='jd',entity_id=jd.id,operation='new_version',before=asdict(old) if old else {},after=asdict(jd)));changed=True
-    if changed:invalidate(s,wid)
-    return latest_jd(s,wid)
 
 @app.post('/api/workspaces/{wid}/target')
 def update_target(wid:str,body:TargetInput,s=Depends(session)):
@@ -157,20 +146,23 @@ def new_run(wid:str,body:RunInput,s=Depends(session)):
     if old:
         if old.request != body.model_dump(): raise HTTPException(409,'幂等键已用于不同请求')
         return asdict(old)
-    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)): raise HTTPException(409,'该工作区已有运行中的任务')
+    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)): raise HTTPException(409,'该工作区已有运行中的任务')
     r=Run(workspace_id=wid,request=body.model_dump(),idempotency_key=body.idempotency_key); s.add(r); s.commit(); submit(r.id); return asdict(r)
 @app.get('/api/runs/{rid}')
 def run(rid:str,workspace_id:str,s=Depends(session)): return asdict(require(s,Run,rid,workspace_id))
 @app.post('/api/runs/{rid}/cancel')
 def cancel(rid:str,workspace_id:str,s=Depends(session)):
     r=require(s,Run,rid,workspace_id)
-    if r.status in ('queued','running'): r.status='cancelled'
+    s.execute(update(Run).where(Run.id==rid,Run.workspace_id==workspace_id,Run.status.in_(('queued','running'))).values(status='cancelled'))
+    s.refresh(r)
     return asdict(r)
 @app.post('/api/runs/{rid}/retry')
 def retry(rid:str,workspace_id:str,s=Depends(session)):
     r=require(s,Run,rid,workspace_id)
+    if r.request.get('resume_generation'):
+        raise HTTPException(409,'简历任务不能通过分析队列重试，请用原产物请求重新生成；材料变化时使用新幂等键')
     if r.status not in ('failed','interrupted','cancelled'): raise HTTPException(409,'只有失败、中断或取消的任务可重试')
-    if still_executing(rid): raise HTTPException(409,'上一次任务正在停止，请稍后重试；已避免同一任务并发执行')
+    if still_executing(rid) or inline_active(workspace_id): raise HTTPException(409,'上一次任务正在停止，请稍后重试；已避免同一任务并发执行')
     if any(x.id != r.id and x.status in ('queued','running') for x in scoped(s,Run,workspace_id)): raise HTTPException(409,'工作区已有进行中的任务')
     r.status='queued'; r.error=None; s.commit(); submit(r.id); return asdict(r)
 @app.post('/api/workspaces/{wid}/evidence')
@@ -206,72 +198,14 @@ def new_experiment(wid:str,body:ExperimentInput,s=Depends(session)):
 def choose_improvement(iid:str,workspace_id:str,s=Depends(session)):
     i=require(s,Improvement,iid,workspace_id)
     if i.status=='stale': raise HTTPException(409,'方案引用旧快照，请重新分析后选择')
-    for other in scoped(s,Improvement,workspace_id):
-        if other.status=='selected': other.status='proposed'
-    i.status='selected'; s.get(Workspace,workspace_id).stage='practice'; invalidate(s,workspace_id); return asdict(i)
+    # Legacy single-choice endpoint keeps its contract, sharing atomic state updates.
+    operations=[{'op':'update_improvement_decision','target_id':other.id,'data':{'decision':'exploring'}} for other in scoped(s,Improvement,workspace_id) if other.status=='selected' and other.id!=iid]
+    operations.append({'op':'update_improvement_decision','target_id':iid,'data':{'decision':'selected'}})
+    interaction.mutation(s,workspace_id,Mutation(expected_version=interaction.state(s,workspace_id)['version'],mutation_id=uid(),operations=operations))
+    s.get(Workspace,workspace_id).stage='practice';return asdict(i)
 @app.post('/api/workspaces/{wid}/artifacts')
 def new_artifact(wid:str,body:ArtifactInput,s=Depends(session)):
-    w=require(s,Workspace,wid)
-    if body.type=='resume' and body.writing_mode!='model' and body.output_mode=='personal_resume':
-        raise HTTPException(422,'规则参考稿仅支持项目参考类型；个人贡献稿请使用模型写作')
-    if body.target_role is not None or body.target_jd is not None:
-        current=latest_jd(s,wid)
-        save_target(s,wid,body.target_role if body.target_role is not None else w.role,body.target_jd if body.target_jd is not None else (current.raw_text if current else ''))
-    old=s.scalar(select(Artifact).where(Artifact.workspace_id==wid,Artifact.idempotency_key==body.idempotency_key))
-    if old:
-        if old.type != body.type: raise HTTPException(409,'幂等键已用于其他产物类型')
-        if body.type=='resume' and (body.writing_mode=='model')!=any(c.get('kind')=='writing_review' for c in old.claims):raise HTTPException(409,'幂等键已用于不同简历生成方式')
-        audit=next((c for c in old.claims if c.get('kind')=='writing_review'),{})
-        ctx=audit.get('generation_context',{})
-        jd=latest_jd(s,wid)
-        if ctx and (ctx.get('output_mode')!=body.output_mode or ctx.get('target_dimensions',[])!=body.target_dimensions or ctx.get('role')!=w.role or ctx.get('jd_version_id')!=(jd.id if jd else None)):raise HTTPException(409,'幂等键对应的输出类型或目标已变化')
-        return asdict(old)
-    load_skill('resume_composition' if body.type != 'task_pack' else 'improvement_planning'); load_skill('claim_review')
-    content,deps,claims,jd=compose(s,wid,body.type)
-    review_status='current'
-    if body.type=='resume' and body.writing_mode=='model':
-        from .resume_writer import collect,write
-        snap,material,fingerprint=collect(s,wid)
-        from .resume_contract import GenerationContext
-        from .source_reader import resolved
-        context=GenerationContext(workspace_id=wid,snapshot_id=snap.id,commit_sha=snap.commit_sha,revision_status='resolved' if resolved(snap.commit_sha) else 'content_hash_bound' if snap.commit_sha.startswith('archive-sha256:') else 'unresolved',role=material['role'],jd_version_id=material['jd_version_id'],target_origin='jd' if material['jd'] else 'role_inferred',material_fingerprint=fingerprint,output_mode=body.output_mode,target_dimensions=body.target_dimensions)
-        run_key='resume:'+body.idempotency_key
-        gen=s.scalar(select(Run).where(Run.workspace_id==wid,Run.idempotency_key==run_key))
-        if gen and gen.request.get('generation_context')!=context.model_dump():raise HTTPException(409,'重试输入版本已变化，请使用新的生成标识')
-        if gen and gen.status=='running':raise HTTPException(409,'该生成正在运行')
-        if not gen:gen=Run(workspace_id=wid,request={'resume_generation':True,'generation_context':context.model_dump()},idempotency_key=run_key,result={});s.add(gen);s.flush()
-        gen.status='running';gen.error=None;gen_id=gen.id
-        def progress(record,result):
-            with Session.begin() as ps:
-                r=require(ps,Run,gen_id,wid);r.steps=r.steps+[record];r.result={**r.result,**result}
-        material['_generation_context']=context.model_dump();material['_target_dimensions']=body.target_dimensions;material['_progress']=progress
-        jd_id=jd.id if jd else None
-        s.commit()  # Do not hold a SQLite snapshot throughout slow model calls.
-        try:content,audit=write(snap,material)
-        except Exception as exc:
-            with Session.begin() as ps:
-                r=require(ps,Run,gen_id,wid);r.status='failed';r.error=str(exc)[:1000] if isinstance(exc,ProviderError) else '内部生成错误，阶段记录已保留'
-            raise
-        s.expire_all()
-        _,_,current_fingerprint=collect(s,wid)
-        if current_fingerprint!=fingerprint:
-            gen=require(s,Run,gen_id,wid);gen.status='failed';gen.error='生成期间输入已变更，未保存为当前版本';s.commit()
-            raise HTTPException(409,'写作期间项目/JD/优化材料已更正，请根据最新材料重新生成')
-        old=s.scalar(select(Artifact).where(Artifact.workspace_id==wid,Artifact.idempotency_key==body.idempotency_key))
-        if old:
-            if not any(c.get('kind')=='writing_review' for c in old.claims):raise HTTPException(409,'幂等键已用于规则参考稿，请使用新的生成标识')
-            return asdict(old)
-        jd=s.get(JD,jd_id) if jd_id else None
-        for claim in claims:claim['usage']='source_ledger_not_generated_text'
-        deps=list(dict.fromkeys(deps+[material['run_id'],gen_id]+[e['id'] for e in material['user_materials']]+[e['id'] for e in material['experiments']]))
-        audit['material_sha256']=fingerprint
-        claims.append(audit)
-        gen=require(s,Run,gen_id,wid);gen.status='completed';gen.result={**gen.result,'status':audit['status'],'generation_context':audit.get('generation_context',context.model_dump())}
-        audit['generation_run_id']=gen_id
-        review_status='current' if audit['status']=='passed' else 'needs_review'
-    version=sum(a.type==body.type for a in scoped(s,Artifact,wid))+1
-    a=Artifact(workspace_id=wid,type=body.type,version=version,content=content,dependency_ids=deps,claims=claims,jd_version_id=jd.id if jd else None,idempotency_key=body.idempotency_key,review_status=review_status)
-    s.add(a); s.flush(); return asdict(a)
+    return create_artifact(s,wid,body)
 @app.get('/api/artifacts/{aid}')
 def artifact(aid:str,workspace_id:str,s=Depends(session)): return asdict(require(s,Artifact,aid,workspace_id))
 @app.get('/api/artifacts/{aid}/export')
@@ -297,6 +231,23 @@ def message(wid:str,body:TextInput,s=Depends(session)):
 @app.get('/api/workspaces/{wid}/messages')
 def messages(wid:str,s=Depends(session)):
     require(s,Workspace,wid); return [asdict(m) for m in scoped(s,Message,wid)]
+
+from . import interaction_service as interaction
+from .interaction_contract import Mutation,DiscussionInput,EditInput,ReviewInput,DecisionInput,GenerateInput
+@app.get('/api/workspaces/{wid}/interaction')
+def interaction_state(wid:str,s=Depends(session)):return interaction.state(s,wid)
+@app.post('/api/workspaces/{wid}/interaction/mutations')
+def interaction_mutation(wid:str,body:Mutation,s=Depends(session)):return interaction.mutation(s,wid,body)
+@app.post('/api/workspaces/{wid}/interaction/chat')
+def interaction_chat(wid:str,body:DiscussionInput,s=Depends(session)):return interaction.discuss(s,wid,body)
+@app.post('/api/workspaces/{wid}/interaction/editor')
+def interaction_edit(wid:str,body:EditInput,s=Depends(session)):return interaction.save_text(s,wid,body)
+@app.post('/api/workspaces/{wid}/interaction/review')
+def interaction_review(wid:str,body:ReviewInput,s=Depends(session)):return interaction.review(s,wid,body)
+@app.post('/api/workspaces/{wid}/interaction/generate')
+def interaction_generate(wid:str,body:GenerateInput,s=Depends(session)):return interaction.generate(s,wid,body)
+@app.post('/api/workspaces/{wid}/interaction/decision')
+def interaction_decision(wid:str,body:DecisionInput,s=Depends(session)):return interaction.decide(s,wid,body)
 DIST=Path(__file__).resolve().parents[2]/'frontend'/'dist'
 if DIST.exists(): app.mount('/',StaticFiles(directory=DIST,html=True),name='web')
 

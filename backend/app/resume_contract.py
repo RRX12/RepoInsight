@@ -1,10 +1,10 @@
 """Versioned facts and structured prose contracts, separate from writing provider."""
 import re
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .source_reader import SourceEvidence
 
-VERSION='resume-quality-v1'
+VERSION='resume-quality-v4'
 class Strict(BaseModel):model_config=ConfigDict(extra='forbid')
 class GenerationContext(Strict):
     workspace_id: str
@@ -49,6 +49,9 @@ class Claim(Strict):
     limitations: list[str]=Field(default_factory=list,max_length=8)
     reason: str=''
     supersedes_claim_id: str | None=None
+class MechanismFact(Strict):
+    text: str=Field(min_length=1,max_length=500)
+    claim_ids: list[str]=Field(min_length=1,max_length=8)
 class Candidate(Strict):
     candidate_id: str
     title: str
@@ -61,10 +64,40 @@ class Candidate(Strict):
     result_refs: list[str]=Field(default_factory=list)
     gaps: list[str]=Field(default_factory=list,max_length=5)
     reason: str=''
+    atomic_fact_ids: list[str]=Field(default_factory=list,max_length=8)
+    problem_claim_ids: list[str]=Field(default_factory=list,max_length=8)
+    mechanism_steps: list[MechanismFact]=Field(default_factory=list,max_length=6)
+    exception_boundaries: list[MechanismFact]=Field(default_factory=list,max_length=6)
+    investigation_questions: list[str]=Field(default_factory=list,max_length=3)
+    source_paths: list[str]=Field(default_factory=list,max_length=4)
+    contribution_claim_ids: list[str]=Field(default_factory=list,max_length=8)
+    result_claim_ids: list[str]=Field(default_factory=list,max_length=8)
 class Discovery(Strict):
     project_intro: str=''
     claims: list[Claim]=Field(max_length=32)
     candidates: list[Candidate]=Field(max_length=10)
+class ReferencePatch(Strict):
+    target: Literal['claim','candidate']
+    target_id: str
+    field: Literal['evidence_ids','claim_ids','requirement_ids','result_refs','atomic_fact_ids','problem_claim_ids','contribution_claim_ids','result_claim_ids','mechanism_steps','exception_boundaries']
+    refs: list[str]=Field(default_factory=list,max_length=8)
+    index: int | None=Field(default=None,ge=0,le=5)
+    drop: bool=False
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_claim_refs(cls,value):
+        if not isinstance(value,dict) or 'claim_ids' not in value:return value
+        if value.get('target')!='candidate' or value.get('field') not in ('claim_ids','atomic_fact_ids','problem_claim_ids','contribution_claim_ids','result_claim_ids','mechanism_steps','exception_boundaries'):
+            raise ValueError('claim_ids别名仅适用于候选事实引用补丁')
+        if 'refs' in value and value['refs']!=value['claim_ids']:
+            raise ValueError('补丁refs与claim_ids冲突')
+        normalized=dict(value)
+        normalized['refs']=normalized.pop('claim_ids')
+        return normalized
+
+class ReferenceRepair(Strict):
+    patches: list[ReferencePatch]=Field(default_factory=list,max_length=32)
+
 class Verification(Strict):claims:list[Claim]=Field(max_length=32)
 class Choice(Strict):
     selected_ids: list[str]=Field(max_length=4)
@@ -81,6 +114,7 @@ class Metric(Strict):
     sample_scope: str
     environment: str
     measurement_method: str
+    change_type: str="unspecified"
     state: Literal['user_reported','measured','proposed']='user_reported'
     experiment_id: str | None=None
     user_statement_id: str | None=None
@@ -102,9 +136,10 @@ class ResumeDraft(Strict):
     questions: list[str]=Field(default_factory=list,max_length=3)
     limitations: list[str]=Field(default_factory=list,max_length=8)
 class Feedback(Strict):
-    category: Literal['expression','needs_evidence','important_omission']
+    category: Literal['expression','needs_evidence','important_omission','candidate_omission','mechanism_missing','fact_attribution']
     issue: str
     candidate_ids: list[str]=Field(default_factory=list,max_length=3)
+    claim_ids: list[str]=Field(default_factory=list,max_length=8)
     paths: list[str]=Field(default_factory=list,max_length=4)
     part_ids: list[str]=Field(default_factory=list,max_length=6)
     blocking: bool=False
@@ -116,7 +151,7 @@ def check_claims(claims,evidence,context,contributions):
     ids=[c.id for c in claims]
     if len(set(ids))!=len(ids):raise ValueError('claim ID重复')
     for c in claims:
-        if any(e not in evidence for e in c.evidence_ids):raise ValueError('claim引用未知证据')
+        if any(e not in evidence for e in c.evidence_ids):raise ValueError('claim '+c.id+'引用未知证据：'+','.join(e for e in c.evidence_ids if e not in evidence))
         sources=[evidence[e] for e in c.evidence_ids]
         code=[e for e in sources if e.kind in ('code','test_source')]
         if any(e.commit_sha!=context.commit_sha for e in code):raise ValueError('claim引用旧版本源码')
@@ -142,6 +177,8 @@ def check_draft(draft,claims,candidates,choice,metrics,contributions):
         if not part.text.strip():continue
         if not part.claim_ids or any(i not in claims for i in part.claim_ids):issues.append('正文缺claim映射');continue
         linked=[claims[i] for i in part.claim_ids]
+        selected_facts={i for cid in selected if cid in candidates for i in candidates[cid].claim_ids}
+        if part is not draft.project_intro and any(i not in selected_facts for i in part.claim_ids):issues.append('项目主线事实仅可用于简介，成果和亮点须来自已选主题')
         if re.search(r'本人|我独立|独立设计|主导实现|主导设计',part.text) and not any(c.attribution in ('user_confirmed','user_evidenced') and c.contribution_id in part.contribution_ids for c in linked):issues.append('个人归属词没有确认贡献支持')
         if any(c.support!='supported' or c.implementation_state in ('proposed','in_progress','unknown') for c in linked):issues.append('正文引用未充分支持或未完成claim')
         if any(i not in contributions or contributions[i]['state'] not in ('implemented','validated') for i in part.contribution_ids):issues.append('正文引用失效个人贡献')

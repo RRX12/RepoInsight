@@ -4,6 +4,7 @@ import ast
 import hashlib
 import json
 import re
+import posixpath
 from pathlib import Path
 from urllib.parse import quote
 from pydantic import BaseModel, Field
@@ -25,6 +26,18 @@ class SourceEvidence(BaseModel):
 
 def sha256(text):return hashlib.sha256(text.encode('utf-8')).hexdigest()
 def resolved(sha):return bool(re.fullmatch(r'[0-9a-f]{40}',sha or ''))
+
+def related_source_paths(path,excerpt,tree_paths):
+    """Resolve explicit local import hints only; not a call graph or execution proof."""
+    refs=re.findall(r"(?:from\s*|import\s*|require\s*\(\s*)['\"](\.[^'\"]+)['\"]",excerpt)
+    matches=[]
+    for ref in refs:
+        base=posixpath.normpath(posixpath.join(posixpath.dirname(path),ref))
+        if not safe_path(base) or base.startswith('../'):continue
+        options=[base]+[base+ext for ext in ('.ts','.tsx','.js','.jsx','.py','.mjs')]+[base+'/index'+ext for ext in ('.ts','.tsx','.js')]
+        if base.endswith(('.js','.jsx')):options += [base.rsplit('.',1)[0]+ext for ext in ('.ts','.tsx')]
+        matches.extend(p for p in options if p in tree_paths and p!=path)
+    return list(dict.fromkeys(matches))
 
 class SourceReader:
     def __init__(self,workspace_id,snapshot=None,github=None,cache_dir=None,max_calls=32):

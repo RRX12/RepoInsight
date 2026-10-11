@@ -1,0 +1,39 @@
+name: RepoCareer checks
+
+'on':
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - name: Install locked dependencies
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .venv/Scripts/python -m pip install -r backend/requirements.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --dir frontend install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --dir frontend exec playwright install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Same checks as local development
+        shell: pwsh
+        run: .venv/Scripts/python scripts/check.py --e2e

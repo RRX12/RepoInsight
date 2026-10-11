@@ -1,0 +1,41 @@
+{
+  "kind": "manual_content_regression_rubric_not_mock_quality_proof",
+  "repo": "qiukuizhenpiaoliang-dot/cp-dance",
+  "commit_sha": "21d9b9b43409d13bbcfefc2f26f7cbae2640c3b6",
+  "material_fingerprint": "d7d306dda9960256e34af419f0aa8501f59dbaba995f79699350da8cc46a071b",
+  "jd_sha256": "a939828c3a15dcac6ad5d0cb2cfa0eae2e7f367b04f72fc07f4a34b174fdc52b",
+  "theme": "cand_boundary_consent",
+  "positive_evidence": [
+    {
+      "path": "lib/agent-engine.ts",
+      "lines": [
+        1217,
+        1226
+      ],
+      "mechanism": "共同对话参与判定排除 reject/soft_reject 及主动退出动作"
+    },
+    {
+      "path": "lib/agent-engine.ts",
+      "lines": [
+        1123,
+        1143
+      ],
+      "mechanism": "拒绝回应进入退让/保持距离的空间处理分支"
+    }
+  ],
+  "unsupported_without_more_evidence": [
+    "AutonomyBoundary 硬边界立即拒绝、软边界覆盖策略协商已集成",
+    "granted/pending/withdrawn 同意管理器及撤回打断已集成",
+    "边界事件扣信任分0.3/0.1的当前源码实现",
+    "用户提出单主Agent+Skill被视为已实现贡献"
+  ],
+  "manual_dimensions": [
+    "关键机制是否发现并正确说明条件与行为",
+    "每个核心断言是否被固定版本证据支持",
+    "选题是否关联JD中的编排/状态能力而非关键词堆砌",
+    "上游、个人贡献、提议、测试与运行结果是否分开",
+    "同一机制是否去重而非重复介绍模块",
+    "正文是否简洁、可读且不虚构成果"
+  ],
+  "note": "人工逐项核对实际生成稿；允许不同合理表述。未命中不得断言全仓不存在，不根据模型自评或关键词出现自动判通过。"
+}

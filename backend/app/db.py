@@ -134,6 +134,12 @@ class Run(Scoped, Base):
     error: Mapped[str | None] = mapped_column(Text)
     idempotency_key: Mapped[str] = mapped_column(String)
     __table_args__ = (UniqueConstraint('workspace_id','idempotency_key'), CheckConstraint("status IN ('queued','running','completed','failed','cancelled','interrupted')"))
+class InteractionState(Base):
+    __tablename__ = 'interaction_states'
+    workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id'),primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer,default=0)
+    data: Mapped[dict] = mapped_column(JSON,default=dict)
+
 def asdict(row):
     return {c.name: getattr(row, c.name) for c in row.__table__.columns}
 

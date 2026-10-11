@@ -55,7 +55,9 @@ def spans(chunk):
 
 
 class Harness:
-    def __init__(self, chat, model='injected', cache_dir=None, max_calls=136):
+    def __init__(self, chat, model='injected', cache_dir=None, max_calls=136, check_active=None, structured_output=None):
+        self.structured_output = structured_output
+        self.check_active = check_active
         self.chat = chat
         self.model = model
         self.cache_dir = Path(cache_dir) if cache_dir else None
@@ -63,7 +65,9 @@ class Harness:
         self.records = []
         self.trace_id = os.urandom(12).hex()
 
-    def call(self, prompt):
+    def call(self, prompt, *, stage=None):
+        if self.check_active:self.check_active()
+        stage=stage or prompt.split('\n',1)[0]
         if len(self.records) >= self.max_calls:
             raise ProviderError('本次模型请求预算已用完；不保存未完成分析为完整结果', 'resume_budget')
         # Conservative UTF-8 byte count is an estimate, never reported as API usage.
@@ -77,13 +81,15 @@ class Harness:
         usage_count = len(usage)
         outcome = 'completed'
         try:
+            if self.structured_output is not None and hasattr(self.chat,'request'):
+                return self.chat.request(prompt,stage=stage,json_output=self.structured_output)
             return self.chat(prompt)
         except Exception:
             outcome = 'failed'
             raise
         finally:
             current_usage = getattr(self.chat, 'usage', [])
-            self.records.append({'stage': prompt.split('\n', 1)[0],
+            self.records.append({'stage': stage,
                                  'input_bytes': len(prompt.encode('utf-8')),
                                  'input_token_upper_estimate': len(prompt.encode('utf-8')),
                                  'status': outcome,
@@ -105,6 +111,7 @@ class Harness:
         facts, uncertainties, coverage = [], [], []
         hits = 0
         for batch in batches:
+            if self.check_active:self.check_active()
             anchored = [{'id': c['id'], 'title': c['title'], 'spans': spans(c)} for c in batch]
             instruction = ('ANALYZE\n'+GUARD+'\n独立于岗位JD分析本批全部片段。提取用户场景、模块职责、输入输出、调用连接、状态与权限边界、已有能力及明确限制。'
                            '不要仅列技术名称；source_ref必须使用提供的span.id（如wiki:0:chunk:0:span:0）。quote留空，程序按该编号填入原文，禁止自行改写引用。没有依据的动机留空，跨片段链路未证实时列uncertainties。\n'
@@ -122,7 +129,7 @@ class Harness:
             cached = mapping is not None
             if mapping is None:
                 try:
-                    mapping = Mapping.model_validate(parse_json(self.call(instruction)))
+                    mapping = Mapping.model_validate(parse_json(self.call(instruction,stage='ANALYZE')))
                 except ValueError as exc:
                     detail='；'.join('.'.join(map(str,e['loc']))+':'+e['type'] for e in exc.errors(include_input=False)[:6]) if hasattr(exc,'errors') else type(exc).__name__
                     raise ProviderError('Wiki分块分析字段无效：'+detail+'；未将失败片段标为已分析', 'resume_mapping_invalid')
@@ -148,7 +155,7 @@ class Harness:
                           +json.dumps({'allowed': list(anchors), 'material': anchored}, ensure_ascii=False)
                           +'\nJSON schema:'+json.dumps(Mapping.model_json_schema(), ensure_ascii=False))
                 try:
-                    mapping = Mapping.model_validate(parse_json(self.call(repair)))
+                    mapping = Mapping.model_validate(parse_json(self.call(repair,stage='ANALYZE_REPAIR')))
                 except ValueError:
                     raise ProviderError('Wiki分块引用修复字段无效，未缓存', 'resume_mapping_invalid')
             if path and not cached:

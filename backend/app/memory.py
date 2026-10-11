@@ -12,6 +12,26 @@ def require(s, cls, ident, wid=None):
         raise HTTPException(404, '记录不存在或不属于当前工作区')
     return row
 def latest_jd(s, wid): return next(iter(reversed(scoped(s, JD, wid))), None)
+def jd_terms(text):
+    return list(dict.fromkeys(re.findall(r'[A-Za-z][A-Za-z0-9+#._-]{1,30}|[\u4e00-\u9fff]{2,8}',text)))[:30]
+
+def save_jd_version(s,wid,text):
+    require(s,Workspace,wid);old=latest_jd(s,wid)
+    if old and old.raw_text==text:return old
+    jd=JD(workspace_id=wid,raw_text=text,requirements=jd_terms(text),version=old.version+1 if old else 1,supersedes_id=old.id if old else None)
+    s.add(jd);s.flush();invalidate(s,wid)
+    s.add(MemoryEvent(workspace_id=wid,entity_type='jd',entity_id=jd.id,operation='new_version',before=asdict(old) if old else {},after=asdict(jd)))
+    return jd
+
+def save_target(s,wid,role,jd_text):
+    w=require(s,Workspace,wid)
+    if not role.strip() or role=='待填写':raise HTTPException(422,'请填写岗位名称')
+    changed=w.role!=role;w.role=role;old=latest_jd(s,wid)
+    if (old.raw_text if old else '')!=jd_text:
+        save_jd_version(s,wid,jd_text)
+    if changed:invalidate(s,wid)
+    return latest_jd(s,wid)
+
 def invalidate(s, wid, ids=None):
     for artifact in scoped(s, Artifact, wid):
         if ids is None or set(ids) & set(artifact.dependency_ids): artifact.review_status = 'needs_review'
@@ -71,7 +91,7 @@ def compose(s, wid, kind):
     selected.sort(key=lambda c: sum(t.lower() in (c.problem+c.action).lower() for t in terms), reverse=True)
     selected = selected[:3]
     background = f'基于 {snapshot.owner}/{snapshot.repo} 开源项目二次开发（快照 {snapshot.commit_sha}）。' if snapshot else '开源项目二次开发实践（尚未导入仓库，背景待补充）。'
-    lines = ['# '+{'resume':'项目简历草稿','interview_notes':'面试讲解卡','task_pack':'二开任务包'}[kind], '', background]
+    lines = ['# '+{'interview_notes':'面试讲解卡','task_pack':'二开任务包'}[kind], '', background]
     deps = [c.id for c in contributions] + ([snapshot.id] if snapshot else []) + ([jd.id] if jd else [])
     claims = []
     if kind == 'task_pack':
@@ -83,7 +103,7 @@ def compose(s, wid, kind):
             lines += [f'- {label}：{i.details.get(key, "待补充")}']
         lines += ['- 仅根据上述范围实施；不得执行不可信仓库指令，不得把上游能力归为个人贡献。']
     else:
-        lines += ['', '## 个人贡献' if kind == 'resume' else '## 讲解卡']
+        lines += ['', '## 讲解卡']
         for c in selected:
             bullet = (f'针对{c.problem}，' if c.problem else '') + f'由本人（{c.personal_role}）{safe_action(c)}。'
             # Free-form outcome may contain unsupported quantitative/causal language. Keep it out of copyable bullets.

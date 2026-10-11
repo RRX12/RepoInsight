@@ -1,6 +1,6 @@
 import json
 import pytest
-from backend.app.resume_writer import write_legacy as write,checks
+from backend.app.resume_legacy import write_legacy as write,checks
 
 GOOD='**项目简介：** 基于FastAPI构建文档筛选系统。\n\n## 技术亮点\n- **分层筛选**：按条件筛选，减少重复阅读。\n- **证据关联**：保留来源以核对结论。\n\n**项目成果：** 完成筛选与证据关联。'
 MATERIAL={'role':'后端','jd':'Celery RabbitMQ','overview':{'summary':'FastAPI文档筛选系统'},'user_optimizations':[]}
@@ -25,7 +25,7 @@ def test_review_is_bounded_and_invalid_review_is_not_pass():
     assert len(calls)==7 and audit['status']=='needs_review'
 
 def test_selection_rejects_fake_refs_and_promoted_plans():
-    from backend.app.resume_writer import Selection,validate_selection
+    from backend.app.resume_legacy import Selection,validate_selection
     bad=json.loads(json.dumps(SELECTED));bad['selected'][0]['source_refs']=['invented']
     with pytest.raises(ValueError):validate_selection(Selection.model_validate(bad),{'overview':'project_existing'})
     bad['selected'][0]['source_refs']=['optimization:plan'];bad['selected'][0]['state']='implemented'
@@ -40,7 +40,7 @@ def test_jd_keywords_are_not_project_evidence():
 
 def test_native_model_has_separate_roles_and_json_review(monkeypatch):
     import httpx
-    from backend.app.resume_writer import WritingModel
+    from backend.app.resume_support import WritingModel
     monkeypatch.setenv('RESUME_MODEL_API_KEY','test-key')
     monkeypatch.setenv('RESUME_MODEL_BASE_URL','https://model.test')
     calls=[]
@@ -101,7 +101,7 @@ def test_model_errors_do_not_create_reference_artifact(client,wid,monkeypatch):
 
 
 def test_targeted_retrieval_reaches_late_wiki_and_is_bounded():
-    from backend.app.resume_writer import enrich_material,Selection
+    from backend.app.resume_legacy import enrich_material,Selection
     selection=json.loads(json.dumps(SELECTED));selection['selected'][0]['source_refs']=['wiki:0']
     material={**MATERIAL,'wiki_pages':[{'title':'筛选','content':'开头'}], '_full_wiki_pages':[{'title':'筛选','content':'无关开头'*1000+'\n\n分层筛选技术：按条件短路，保留原文证据。'}]}
     enriched=enrich_material(material,Selection.model_validate(selection),budget=200)
@@ -111,7 +111,7 @@ def test_targeted_retrieval_reaches_late_wiki_and_is_bounded():
 
 
 def test_topics_can_reorder_or_remove_but_not_invent():
-    from backend.app.resume_writer import validate_draft_topics,Selection
+    from backend.app.resume_legacy import validate_draft_topics,Selection
     selection=Selection.model_validate(SELECTED)
     assert not validate_draft_topics('- **证据关联**：保留证据',selection)
     assert validate_draft_topics('- **虚构亮点**：内容',selection)
@@ -151,7 +151,7 @@ def test_independent_review_does_not_receive_other_opinion():
 
 
 def test_value_claim_rejects_unconfirmed_as_existing():
-    from backend.app.resume_writer import Selection,validate_selection
+    from backend.app.resume_legacy import Selection,validate_selection
     data=json.loads(json.dumps(SELECTED))
     data['project_value']={'claims':[{'statement':'用户已完成重构','mechanism_chain':['改造'], 'source_refs':['optimization:p'],'evidence_level':'wiki_analysis'}]}
     with pytest.raises(ValueError):validate_selection(Selection.model_validate(data),{'overview':'project_existing','optimization:p':'proposed'})
@@ -182,7 +182,7 @@ def test_product_analysis_is_independent_of_jd_before_selection():
 
 
 def test_stable_ids_allow_renaming_but_reject_unknown_or_duplicate():
-    from backend.app.resume_writer import Selection,validate_draft_topics
+    from backend.app.resume_legacy import Selection,validate_draft_topics
     selection=Selection.model_validate(SELECTED)
     for i,h in enumerate(selection.selected):h.id=f'h{i+1}'
     assert not validate_draft_topics('- **条件级联筛选** <!-- highlight:h1 -->：说明机制',selection)
@@ -191,14 +191,14 @@ def test_stable_ids_allow_renaming_but_reject_unknown_or_duplicate():
 
 
 def test_evidence_packing_keeps_all_cited_text_and_ids():
-    from backend.app.resume_writer import pack_evidence
+    from backend.app.resume_legacy import pack_evidence
     packed=pack_evidence([{'content':'完整原文：角色保存经历并读取。','source_ref':'wiki:0'}],[{'id':'wiki:0:chunk:0:span:0','content':'角色保存经历'}])
     assert len(packed)==1
     assert 'wiki:0:chunk:0:span:0' in packed[0]['source_refs']
     assert '角色保存经历' in packed[0]['content']
 
 def test_job_retrieval_is_fair_bounded_and_preserves_tail():
-    from backend.app.resume_writer import JobPlan,job_evidence
+    from backend.app.resume_legacy import JobPlan,job_evidence
     plan=JobPlan.model_validate({'questions':[{'requirement':'记忆','question':'如何召回？','search_terms':['memory']},{'requirement':'不存在','question':'如何处理？','search_terms':['unknown-term']}]})
     result=job_evidence({'_full_wiki_pages':[{'content':'无关'*6000+' memory retrieval history','title':'记忆'}]},plan,{},budget=3200)
     assert any('memory retrieval' in e['content'] for e in result[0]['candidate_evidence'])
@@ -207,12 +207,12 @@ def test_job_retrieval_is_fair_bounded_and_preserves_tail():
 
 @pytest.mark.parametrize('ref',['invented','optimization:plan'])
 def test_panorama_chain_rejects_invalid_or_personal_plan_sources(ref):
-    from backend.app.resume_writer import ProjectValue,validate_product
+    from backend.app.resume_support import ProjectValue,validate_product
     product=ProjectValue.model_validate({'architecture':[{'name':'多Agent','steps':['调度','提交'],'source_refs':[ref]}]})
     with pytest.raises(ValueError):validate_product(product,{'overview':'project_existing','optimization:plan':'proposed'})
 
 def test_merged_topic_preserves_proposed_state():
-    from backend.app.resume_writer import Selection,validate_selection
+    from backend.app.resume_legacy import Selection,validate_selection
     data=json.loads(json.dumps(SELECTED));h=data['selected'][0]
     h.update(source_refs=['overview','optimization:plan'],state='proposed')
     h['card']={'mechanism':'原项目已有记忆；计划优化召回，尚未实现'}
@@ -220,7 +220,7 @@ def test_merged_topic_preserves_proposed_state():
     assert selection.selected[0].state=='proposed'
 
 def test_normalize_heading_does_not_change_claims_or_invent_sections():
-    from backend.app.resume_writer import normalize_draft
+    from backend.app.resume_legacy import normalize_draft
     missing=GOOD.replace('## 技术亮点\n','')
     repaired=normalize_draft(missing)
     assert '## 技术亮点' in repaired

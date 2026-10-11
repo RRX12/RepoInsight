@@ -1,61 +1,49 @@
-## 当前简历质量分支
-
-2026-10-11：新增固定版本源码补证、结构化事实/正文、岗位调查与覆盖、独立审查和两种输出类型。Wiki版本未保证，不等于固定SHA源码。源码不执行。详见[产品验收](docs/PRODUCT.md)、[真实状态](docs/STATUS.md)、[实施/评测记录](docs/resume-quality-progress.md)。旧记录无需SQL迁移，保持预览导出。
-
-离线生产入口契约对比：`.venv/Scripts/python scripts/eval-resume-quality.py --compare-legacy --output data/resume-quality-offline.json`。真实只读烟测：追加`--real --workspace <工作区ID> --freeze-revision`；需要现有模型配置，会实际消耗API用量，不写历史业务记录。评测报告不自动评分或宣称质量提升。
-
 # RepoCareer
 
-当前首版流程：GitHub仓库链接 → 岗位名称与JD → DeepWiki-Open项目全貌 → 架构优化方向 → 对话讨论/更正 → 确认个人贡献 → 简历Markdown。
+中文本地单用户 MVP：GitHub 仓库链接 → 岗位名称/JD → DeepWiki-Open 项目全貌与架构建议 → 讨论、更正和确认贡献 → 项目简历参考稿或个人简历。
 
-## 启动
+## 启动与验证
 
-已有依赖时在根目录运行：
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start.ps1
-```
-打开 http://127.0.0.1:8000 。单后端进程同时提供构建好的前端。新安装：Python3.12+建.venv，pip install -r backend/requirements.lock.txt；frontend执行pnpm install --frozen-lockfile、pnpm run build。
+已有依赖时运行 `powershell -ExecutionPolicy Bypass -File scripts/start.ps1`，打开 http://127.0.0.1:8000 。该脚本启动单个后端进程并提供 frontend/dist。开发时根目录运行 `.venv/Scripts/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000`，frontend 中运行 `pnpm run dev`。
 
-## 配置真实DeepWiki-Open
-
-此项目已实现服务适配器，不包含已运行的DeepWiki服务。另行部署 [DeepWiki-Open](https://github.com/AsyncFuncAI/deepwiki-open)，选择支持 /wiki/tasks、/api/wiki_cache、/ws/chat 的版本，按其README配置生成模型及embedding模型。
-
-复制.env.example为.env，设置DEEPWIKI_BASE_URL（例如http://127.0.0.1:8002）、DEEPWIKI_PROVIDER、DEEPWIKI_MODEL，重启本项目。模型凭证配置在DeepWiki-Open服务中，不填入网页。
-
-当前GitHub链接模式直接向DeepWiki-Open发送规范仓库URL，type=github、comprehensive=true；无需共享本地源码目录。DeepWiki服务自行获取仓库和索引。公开仓库链接必须为https://github.com/owner/repo；不执行项目代码。源码引用跳转GitHub，来自Wiki材料而非本应用独立读取，可能复用服务缓存，未固定提交。旧ZIP上传API保留兼容，只有旧上传分析需共享数据目录。
-
-缺少服务时真实分析明确失败，保存的链接与JD保留。可在“分析服务与演示说明”显式勾选演示；示例与链接仓库/实际JD无关，不是真实模型输出。取消只停止本地等待，外部任务可能继续；重试可复用Wiki缓存。
-
-真实报告后的对话使用DeepWiki检索聊天；演示报告的对话默认为标记的规则助手。旧OpenAI兼容对话适配器保留。用户确认分析更正后保存为材料并进入后续对话；个人贡献需复核状态与归属。已验证需测试报告、范围、来源和限制。简历只选已实现/已验证贡献，不将建议或上游功能写成个人成果；更正后旧稿待复核。
-
-## 验证与恢复
+新安装：Python 3.12+ 创建 .venv，安装 backend/requirements.lock.txt；frontend 执行 `pnpm install --frozen-lockfile`、`pnpm run build`。
 
 ```powershell
-.venv/Scripts/python.exe -m pytest backend/tests -q
-cd frontend
-pnpm run build
-pnpm run test:e2e
+.venv/Scripts/python scripts/check.py --e2e
 ```
-E2E使用独立data/e2e与8001/5173，不往用户工作区添加测试贡献。pytest使用临时数据库。当前DeepWiki接口离线模拟已验证；真实服务与模型质量未验证。项目记录见docs/PRODUCT.md、STATUS.md、DECISIONS.md、BACKLOG.md。旧搜索/实践API保留兼容，当前界面简化为上传入口。
 
-## 本机DeepSeek配置
-已配置DeepWiki生成provider=deepseek/model=deepseek-v4-pro，API https://api.deepseek.com；密钥只在data/deepwiki-open/.env。embedding使用本机Ollama nomic-embed-text:latest，CPU模式避开GPU崩溃。
-启动DeepWiki：powershell -ExecutionPolicy Bypass -File scripts/start-deepwiki.ps1（8002）；主应用scripts/start.ps1（8000）。修改密钥后重启DeepWiki。依赖冻结在scripts/deepwiki-requirements.lock.txt；上游源码固定d92819a9c9f3b99416e3580ff235fc9d3adf8b89，恢复时git apply scripts/deepwiki-local.patch（在源码目录使用对应绝对路径），包含DeepSeek客户端映射、Ollama options修复与模型配置；补回服务端.env，禁止提交密钥。scripts/configure-deepwiki.py仅用于本地Ollama/embedding配置，不会写入DeepSeek密钥。
+该入口与GitHub CI复用架构检查、pytest、前端类型/隔离构建及可选离线E2E；不带--e2e运行核心检查。安装用backend/requirements.lock.txt、frontend/pnpm-lock.yaml和packageManager指定pnpm，缺工具或失败返回非零，不替换生产dist。开发规则统一见[AGENTS.md](AGENTS.md)，模块定位、兼容用途、CI和AI加载说明见[architecture](docs/architecture.md)。
 
-## 云端Embedding当前配置
-生成仍为DeepSeek deepseek-v4-pro；embedding已切换用户指定qwen3.7-text-embedding-flash，1024维、每批20条，官方北京兼容地址https://dashscope.aliyuncs.com/compatible-mode/v1。凭证仅在DeepWiki .env的QWEN_EMBEDDING_API_KEY；DEEPWIKI_EMBEDDER_TYPE=openai表示协议适配，不代表向OpenAI发送数据。配置在api/config/embedder.json，初始化独立密钥及base_url。
-真实接口HTTP200，DeepWiki Embedder返回2个1024维向量/error=None。索引缓存按模型、维度、端点生成独立目录，不混用旧Ollama缓存。start-deepwiki.ps1已移除强制ollama的环境变量，由.env决定。恢复时应用更新的scripts/deepwiki-local.patch；不要运行本地Ollama初始化脚本覆盖云配置。
+pytest 使用临时数据库与源码请求 mock。Playwright 使用8001/5173与tests/fixture_app.py；统一入口传入临时数据目录，单独执行E2E使用独立data/e2e；GitHub 版本解析固定为离线 fixture，演示流程不调用真实模型。单测/mock/构建通过不证明真实模型文案质量。scripts/ui-smoke.mjs 是现行页面的只读截图检查；scripts/demo.py 会写数据，只能用于自行准备的隔离演示环境。
 
-## 简历模型写作与有限审查
-页面默认“模型按Skill写作与审查”，使用已保存DeepWiki内容、岗位JD和确认的用户材料。实际加载backend/skills/resume_composition/SKILL.md及references/writing-template.md，直接调用现有DeepSeek模型，正文Markdown，审查JSON，最多两轮（初稿和一次修订，生成部分最多八请求（产品全貌、岗位选题、写作与独立双评审），首次Wiki分析另计最多64批）。未通过保存待复核；API失败不冒充规则稿。可明确选择“规则参考稿”用于不调用模型的预览/演示。
-写作凭证默认读取忽略提交的data/deepwiki-open/.env中的DEEPSEEK_API_KEY/DEEPSEEK_BASE_URL，模型默认DEEPWIKI_MODEL。可用RESUME_MODEL_ENV_FILE、RESUME_MODEL_API_KEY、RESUME_MODEL_BASE_URL、RESUME_MODEL覆盖；不要提交真实密钥。写作直接调用云API，不要求已保存Wiki重新索引。API POST /api/workspaces/{id}/artifacts传type=resume、writing_mode=model、独立idempotency_key；旧API不传writing_mode仍生成reference以保持兼容。
-写作过程不持有长SQLite事务；材料变化返回409，不保存旧材料稿。审查日志、Skill与材料哈希在Artifact.claims的writing_review中，source_ledger_not_generated_text记录为源材料账本，不是逐句事实认证。使用前仍须核对个人经历与数据。研究模板来源见writing-template.md。
+## DeepWiki-Open
 
-### 大项目简历分析 Harness
-先对全部有效Wiki分块分析，证据使用预编号短段，原文由程序填入。分块缓存默认在data/resume-analysis-cache，可RESUME_ANALYSIS_CACHE_DIR覆盖；按工作区/快照/材料/模型端点/提示版本隔离。缓存只保留Wiki分析，JD与个人更正每次新读。预算不足明确失败，缓存可复用，不丢弃末尾。API报告usage原样存入审计；字节数只是保守Token上界，不是实际计费值；RESUME_MAX_REPORTED_TOKENS默认250000，达到后停止后续请求。无服务返回usage时不宣称费用或零用量。
-独立PRODUCT请求先形成无JD项目全貌，SELECT再结合JD选材；HR/技术两次请求独立审查，最多一次修订。初次分析较慢，请勿重复点击并行提交。同步等待/断线恢复仍是已知限制。
-人工对比：`.venv/Scripts/python scripts/compare-resumes.py --workspace <id> --baseline <id> --candidate <id> --output data/resume-comparison.md`。材料指纹不一致时仅描述比较；不得用模型通过率充当质量提升。
+另外部署 [DeepWiki-Open](https://github.com/AsyncFuncAI/deepwiki-open)，使用支持 /wiki/tasks、/api/wiki_cache、/ws/chat 的版本。复制 .env.example 为 .env，配置 DEEPWIKI_BASE_URL、DEEPWIKI_PROVIDER、DEEPWIKI_MODEL；生成与 embedding 凭证留在 sidecar，不填入网页、不提交 Git。
 
-每个分析批次引用无效仅修复一次；失败不缓存，已完成批次可复用。调用元数据在缓存目录attempts中，不记录Prompt或密钥。事实映射保留逐字证据，注意不要公开data目录。
+公开链接必须为 https://github.com/owner/repo。应用发送规范 URL，DeepWiki 获取、索引仓库并生成全面 Wiki；当前界面无需打包源码或共享本地目录。新快照尝试解析固定 SHA，简历 SourceReader 只读对应源码；DeepWiki 的 Wiki 版本可能未知，不能把它追认为该 SHA。任何导入源码都不执行。旧 ZIP API 保留兼容，只有旧本地分析模式需要共享目录。
 
-D018简历链路：项目全貌（闭环/架构/机制链）→JD中性问题规划→本地候选补证→按链路合并选题并产出大纲→写作与独立双评审。下游最多9次请求；仅Wiki映射缓存，JD变更仍会重做规划和写作。候选召回不是事实认证；来源字段与状态失败会拒绝生成，缺失证据标待确认。
+缺少服务明确失败，链接/JD 保留；不会回退旧 AST 模板。演示选项展示固定示例，不代表链接仓库或真实 JD。架构分析取消仅停止本地等待，外部任务可能继续，重试可复用 Wiki。
+
+本机 sidecar 启动命令为 `powershell -ExecutionPolicy Bypass -File scripts/start-deepwiki.ps1`（8002）。上游固定版本及恢复补丁见 scripts/deepwiki-requirements.lock.txt、scripts/deepwiki-local.patch；应用补丁后自行恢复忽略提交的服务端 .env。生成和 embedding 可分别配置云服务或 Ollama；实际配置以本机文件为准，历史测试记录见 docs/STATUS.md 后文。scripts/configure-deepwiki.py **仅初始化没有 .env 的本地 Ollama sidecar**，已有配置立即拒绝，不能用于切换或恢复已配置的云服务。
+
+## 简历生成
+
+两种产物：project_reference 以完整上游项目为主体，不代表用户原创；personal_resume 围绕当前确认的个人贡献。讨论、尝试、实现、验证与支持程度分开；计划和待补问题放在模型正文外，用户数字保留来源及验证状态。显式规则参考稿仍供离线/演示使用，不冒充模型输出。贡献或项目事实更正保留历史，并使相关旧草稿待复核。
+
+生产模型流程：全量有效 Wiki 分块映射 → 无 JD 项目全貌 → 最多 6 个岗位调查问题 → Wiki 召回 → 候选发现 → 问题驱动固定 SHA 补证/卡片补全 → 独立 claim 核验 → 1–4 个主题与职责覆盖 → 结构化 Draft → 独立 HR/技术审查 → 最多一次补证重选/修订 → 确定性 Markdown。实际加载 backend/skills/resume_composition/SKILL.md 与 references/writing-template.md。每段关联 claim，缺证据不凑能力；成果可省略。独立请求仍使用同源模型，不是招聘结论或人工认证。
+
+默认最多 128 次映射请求（64 批、每批最多一次引用修复），后续请求预算默认 16、RESUME_GENERATION_CALLS 限定 8–20，包含结构修复及重选；最多两轮写作/审查。API 报告用量达到 RESUME_MAX_REPORTED_TOKENS（默认 250000）后停止后续请求。UTF-8 字节估计不等于实际计費量，缺少 usage 表示未知。
+
+模型客户端及材料契约集中在 backend/app/resume_support.py。凭证默认读取 data/deepwiki-open/.env 中 DEEPSEEK_API_KEY/DEEPSEEK_BASE_URL；用 RESUME_MODEL_ENV_FILE、RESUME_MODEL_API_KEY、RESUME_MODEL_BASE_URL 覆盖。写作模型由 **RESUME_MODEL** 指定，未指定默认 deepseek-v4-pro，不再继承 DEEPWIKI_MODEL。Wiki 映射缓存默认 REPOCAREER_DATA/resume-analysis-cache，由 RESUME_ANALYSIS_CACHE_DIR 覆盖；按工作区/快照/材料/模型端点/指令隔离，JD 与贡献每次新读。失败批次不缓存，不静默丢弃后续 Wiki。
+
+POST /api/workspaces/{id}/artifacts 使用 writing_mode=model、独立 idempotency_key 和当前表单 target_role/target_jd。缺省 writing_mode=reference 保持旧 API 兼容。artifact_service 负责准入、冻结材料、短事务与保存；同一工作区产物串行，不同工作区独立。Run 取消在下一阶段生效，已发 HTTP 模型请求不能撤销，结束前仍占用准入。简历 Run 的通用 /retry 返回 409，须通过原产物请求重试；材料/目标变化需新幂等键。运行中更正导致指纹改变时拒绝保存旧稿。重启将未结束 Run 标记 interrupted，不自动重放付费请求。
+
+历史 Markdown 草稿与旧审查记录保留预览/导出，不回填事实认证。resume_legacy.py 只用于明确的离线/历史评测比较，没有生产降级路径。
+
+## 评测与项目记录
+
+离线契约对比：`.venv/Scripts/python scripts/eval-resume-quality.py --compare-legacy --output data/resume-quality-offline.json`。真实模式追加 `--real --workspace <ID> --freeze-revision`，**会消耗 API 用量**，需要人工核对，不自动证明质量提升。已存稿人工对比：`.venv/Scripts/python scripts/compare-resumes.py --workspace <id> --baseline <id> --candidate <id> --output data/resume-comparison.md`。
+
+当前范围见 docs/PRODUCT.md；恢复与验证见 docs/STATUS.md；决定沿革见 docs/DECISIONS.md；反馈任务见 docs/BACKLOG.md；本轮代码整理及兼容删除条件见 docs/code-review.md。旧分析/上传 API 尚未确认退役范围，继续保留。
+
+单主题回归可复用原审计检查点：`scripts/eval-resume-quality.py --real --checkpoint-input <冻结材料.json> --checkpoint-before <原评测.json> --theme <候选ID> --paid-call-limit 8 --output <隔离输出.json>`。该命令会付费，需本次明确授权；输入指纹/产物模式必须匹配原报告。`--source-path`/`--source-question`记录人工补查线索；`--resume-checkpoint`仅重用已完成的补全/核验结果，累计最多8次，不能结合`--compare-legacy`另跑付费基线。原映射/候选被回放，不能把该评测说成新版全量发现验收。人工规则见`fixtures/resume-quality/boundary-review.json`，真实记录/失败原因见`docs/resume-quality-progress.md`。

@@ -31,8 +31,8 @@ class Stub:
         elif stage in ('SELECT','RESELECT'):
             cid='n2' if stage=='RESELECT' or self.invalid else 'n1';cl='c2' if cid=='n2' else 'c1'
             d={'selected_ids':[cid],'reasons':{cid:'有版本机制证据'},'omitted':{'n1' if cid=='n2' else 'n2':'避免重复'},'coverage':[{'requirement_id':'r1','status':'direct','claim_ids':[cl],'candidate_ids':[cid]}]}
-        elif stage=='WRITE':
-            self.round+=1;cid='n2' if self.round>1 or self.invalid else 'n1';cl='c2' if cid=='n2' else 'c1'
+        elif stage in ('WRITE','DRAFT_HR','DRAFT_TECHNICAL'):
+            self.round+=int(stage=='WRITE');cid='n2' if self.round>1 or self.invalid else 'n1';cl='c2' if cid=='n2' else 'c1'
             mode='personal_resume' if '"output_mode": "personal_resume"' in p else 'project_reference'
             d={'output_mode':mode,'project_intro':prose(cl),'bullets':[] if mode=='personal_resume' else [{'id':'b1','title':'版本化记忆','candidate_ids':[cid],**prose(cl)}],'questions':['你实际修改了哪些记忆模块？'] if mode=='personal_resume' else []}
         elif stage.startswith('REVIEW'):
@@ -58,10 +58,10 @@ def test_no_jd_no_contribution_is_explicit_personal_draft():
     def chat(p):
         if p.startswith('SELECT'):return json.dumps({'selected_ids':[],'reasons':{},'coverage':[{'requirement_id':'r1','status':'unknown','gaps':['没有确认个人贡献']}]})
         return original(p)
-    text,audit=write(None,material,chat)
-    assert audit['generation_context']['target_origin']=='role_inferred'
-    assert audit['status']=='needs_review' and len(audit['questions'])<=3
-    assert not audit['structured_draft']['bullets'] and '本人' not in text
+    with pytest.raises(ProviderError) as caught:
+        write(None,material,chat)
+    assert caught.value.code=='resume_no_candidates'
+    assert not any(stage.startswith(('DRAFT_','WRITE','REVIEW_','SELECT')) for stage,_ in model.calls)
 
 def test_unsupported_existing_reference_does_not_enter_prose():
     text,audit=write(None,MATERIAL,Stub(invalid=True))
@@ -125,7 +125,7 @@ def test_generate_saves_current_target_and_trace_without_duplicate_jd(client,wid
     from backend.app.db import Session,Run
     snap=client.post(f'/api/workspaces/{wid}/repository-link',json={'url':'https://github.com/example/demo'}).json()
     with Session.begin() as s:s.add(Run(workspace_id=wid,status='completed',request={'snapshot_id':snap['id']},result={'wiki':{'generated_pages':{'memory':MATERIAL['_full_wiki_pages'][0]}}},idempotency_key='wiki'))
-    monkeypatch.setattr('backend.app.resume_writer.WritingModel',Stub)
+    monkeypatch.setattr('backend.app.resume_support.WritingModel',Stub)
     body={'type':'resume','writing_mode':'model','target_role':'AI工程师','target_jd':'多轮记忆','idempotency_key':'g'}
     r=client.post(f'/api/workspaces/{wid}/artifacts',json=body)
     assert r.status_code==200,r.text
@@ -227,7 +227,7 @@ def test_failed_generation_has_durable_trace_and_no_artifact(client,wid,monkeypa
         def __call__(self,p):
             if p.startswith('DISCOVER'):return '{"claims":[],"candidates":[],"unexpected":true}'
             return super().__call__(p)
-    monkeypatch.setattr('backend.app.resume_writer.WritingModel',Broken)
+    monkeypatch.setattr('backend.app.resume_support.WritingModel',Broken)
     response=client.post(f'/api/workspaces/{wid}/artifacts',json={'type':'resume','writing_mode':'model','target_role':'AI','target_jd':'记忆','idempotency_key':'failure'})
     assert response.status_code>=400
     w=client.get(f'/api/workspaces/{wid}').json()
@@ -250,7 +250,7 @@ def test_noneligible_selection_is_repaired_without_promoting_claims():
 
 
 def test_model_output_truncation_is_not_a_completed_json():
-    from backend.app.resume_writer import WritingModel
+    from backend.app.resume_support import WritingModel
     model=WritingModel.__new__(WritingModel);model.base='https://fixture';model.key='fixture-key';model.model='fixture';model.usage=[]
     model.client=httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(200,json={'choices':[{'message':{'content':'{"broken":'},'finish_reason':'length'}],'usage':{'total_tokens':10}})))
     with pytest.raises(ProviderError) as caught:model('PRODUCT\nJSON schema:{}')
