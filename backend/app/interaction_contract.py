@@ -4,7 +4,7 @@ from pydantic import BaseModel,ConfigDict,Field
 class Strict(BaseModel):
     model_config=ConfigDict(extra='forbid')
 class Operation(Strict):
-    op: Literal['update_jd','update_contribution','create_improvement','update_improvement_decision','report_improvement_completed','create_metric','update_metric','request_resume_generation','request_resume_review']
+    op: Literal['update_jd','update_contribution','create_improvement','edit_improvement','delete_improvement','update_improvement_decision','report_improvement_completed','create_metric','update_metric','request_resume_generation','request_resume_review']
     target_id: str | None=None
     data: dict=Field(default_factory=dict)
 class Mutation(Strict):

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, update
@@ -56,7 +56,7 @@ async def operational_error(request, exc):
 @app.get('/api/config')
 def config(): return {'model_mode':'demo' if ModelProvider().demo else 'real','skills':SKILLS,'github':'public REST / optional token','max_material_chars':200000,
     'deepwiki_configured':bool(os.getenv('DEEPWIKI_BASE_URL')),'deepwiki_provider':os.getenv('DEEPWIKI_PROVIDER','google'),'deepwiki_model':os.getenv('DEEPWIKI_MODEL','服务默认'),
-    'max_archive_bytes':MAX_ARCHIVE,'product_flow':'github_architecture_review'}
+    'deepwiki_web_url':os.getenv('DEEPWIKI_WEB_URL',''), 'max_archive_bytes':MAX_ARCHIVE,'product_flow':'github_architecture_review'}
 @app.get('/api/workspaces')
 def workspaces(s=Depends(session)): return [asdict(w) for w in s.scalars(select(Workspace).order_by(Workspace.created_at.desc()))]
 @app.post('/api/workspaces')
@@ -89,7 +89,9 @@ def save_repository_link(wid:str,body:RepositoryLinkInput,s=Depends(session)):
     for i in scoped(s,Improvement,wid):i.status='stale'
     for f in scoped(s,Finding,wid):f.status='stale'
     invalidate(s,wid)
-    return asdict(snap)
+    # The browser immediately refreshes after this response; make the snapshot visible first.
+    result=asdict(snap);s.commit()
+    return result
 
 @app.post('/api/workspaces/{wid}/repository-upload')
 async def upload_repository(wid:str,request:Request,s=Depends(session)):
@@ -237,7 +239,7 @@ from .interaction_contract import Mutation,DiscussionInput,EditInput,ReviewInput
 @app.get('/api/workspaces/{wid}/interaction')
 def interaction_state(wid:str,s=Depends(session)):return interaction.state(s,wid)
 @app.post('/api/workspaces/{wid}/interaction/mutations')
-def interaction_mutation(wid:str,body:Mutation,s=Depends(session)):return interaction.mutation(s,wid,body)
+def interaction_mutation(wid:str,body:Mutation,s=Depends(session,scope='function')):return interaction.mutation(s,wid,body)
 @app.post('/api/workspaces/{wid}/interaction/chat')
 def interaction_chat(wid:str,body:DiscussionInput,s=Depends(session)):return interaction.discuss(s,wid,body)
 @app.post('/api/workspaces/{wid}/interaction/editor')
@@ -248,6 +250,12 @@ def interaction_review(wid:str,body:ReviewInput,s=Depends(session)):return inter
 def interaction_generate(wid:str,body:GenerateInput,s=Depends(session)):return interaction.generate(s,wid,body)
 @app.post('/api/workspaces/{wid}/interaction/decision')
 def interaction_decision(wid:str,body:DecisionInput,s=Depends(session)):return interaction.decide(s,wid,body)
+from . import wiki_chat
+@app.post('/api/workspaces/{wid}/wiki-chat')
+def wiki_question(wid:str,body:wiki_chat.WikiQuestion,s=Depends(session,scope='function')):
+    base,payload=wiki_chat.prepare(s,wid,body)
+    return StreamingResponse(wiki_chat.stream(base,payload),media_type='application/x-ndjson',headers={'Cache-Control':'no-store','X-Accel-Buffering':'no'})
+
 DIST=Path(__file__).resolve().parents[2]/'frontend'/'dist'
 if DIST.exists(): app.mount('/',StaticFiles(directory=DIST,html=True),name='web')
 

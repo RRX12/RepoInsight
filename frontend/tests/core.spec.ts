@@ -5,11 +5,13 @@ test('GitHub link JD report discussion correction and resume',async({page})=>{
  const workspace=await response.json();await page.addInitScript(id=>localStorage.setItem('repocareer.workspace',id),workspace.id);
  await page.goto('/?view=admin');await page.getByLabel('GitHub仓库链接').fill('https://github.com/example/document-agent');await page.getByRole('button',{name:'保存仓库链接',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('GitHub链接已保存');
+ const snapshotState=await (await page.request.get('/api/workspaces/'+workspace.id)).json();expect(snapshotState.snapshots).toHaveLength(1);await expect(page.getByRole('link',{name:'在GitHub查看仓库 ↗'})).toBeVisible();
  await page.getByLabel('岗位名称',{exact:true}).fill('Agent开发工程师');await page.getByLabel('岗位JD',{exact:true}).fill('要求Skill、MCP与multi-agent，先评估必要性。');
  await page.getByText('分析服务与演示说明').click();await page.getByRole('checkbox').check();
  await page.getByRole('button',{name:'分析项目全貌与优化方向 →'}).click();
  await expect(page.getByText('演示文档助手项目，不是上传仓库的分析。',{exact:true})).toBeVisible({timeout:15000});
- await page.goto('/');await page.getByRole('button',{name:'讨论区',exact:true}).click();await page.getByLabel('项目讨论',{exact:true}).fill('只是讨论Skill，没有实现');await page.getByRole('button',{name:'发送讨论',exact:true}).click();await expect(page.getByText('只是讨论Skill，没有实现',{exact:true})).toBeVisible();
+ await page.goto('/');await expect(page.getByRole('button',{name:'生成简历',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'优化大方向',exact:true}).click();await expect(page.getByRole('button',{name:'生成简历',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'编辑方向',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'删除方向',exact:true})).toHaveCount(0);await expect(page.getByTestId('direction-option').getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'项目设置',exact:true}).click();await page.getByRole('button',{name:'查看项目全貌'}).click();await expect(page.getByRole('navigation',{name:'Wiki章节'})).toBeVisible();await expect(page.getByRole('heading',{name:'项目问答',exact:true})).not.toBeVisible();await page.getByRole('button',{name:'向项目提问',exact:true}).click();await expect(page.getByRole('heading',{name:'项目问答',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'发送问题',exact:true})).toBeDisabled();expect(page.url()).not.toContain(':3000');
+ await page.goto('/?view=admin');await page.getByRole('button',{name:'讨论区',exact:true}).click();await page.getByLabel('项目讨论',{exact:true}).fill('只是讨论Skill，没有实现');await page.getByRole('button',{name:'发送讨论',exact:true}).click();await expect(page.getByText('只是讨论Skill，没有实现',{exact:true})).toBeVisible();
  await page.goto('/?view=admin');await page.getByText('历史生成与证据工具（兼容入口）',{exact:true}).click();await page.getByText('确认个人贡献与完成状态',{exact:true}).click();await page.getByLabel('本人职责',{exact:true}).fill('本人负责工作流模块');await page.getByLabel('具体问题',{exact:true}).fill('重复文档流程难维护');await page.getByLabel('技术行动',{exact:true}).fill('抽取领域工作流配置');await page.getByLabel('方案取舍',{exact:true}).fill('保留单Agent，减少调度复杂度');await page.getByLabel('贡献状态',{exact:true}).selectOption('implemented');await page.getByRole('button',{name:'确认保存贡献',exact:true}).click();
  await page.getByLabel('简历写作方式',{exact:true}).selectOption('reference');if(!await page.getByRole('button',{name:'生成项目简历参考稿',exact:true}).isVisible())await page.getByText('历史生成与证据工具（兼容入口）',{exact:true}).click();await page.getByRole('button',{name:'生成项目简历参考稿',exact:true}).click();await expect(page.getByText('简历 v1 · 当前事实生成',{exact:true})).toBeVisible();await page.getByText('简历 v1 · 当前事实生成',{exact:true}).click();await expect(page.getByTestId('resume-preview').filter({hasText:'已实现优化'})).toBeVisible();await expect(page.getByRole('heading',{name:'技术亮点',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'更正贡献',exact:true}).click();await page.getByLabel('贡献状态',{exact:true}).selectOption('proposed');await page.getByRole('button',{name:'确认保存贡献',exact:true}).click();await expect(page.getByText('简历 v1 · 待复核',{exact:true})).toBeVisible();
@@ -94,3 +96,19 @@ test('failed generation refreshes terminal status and preserves saved resume',as
  await expect(page.getByRole('status')).toContainText('failed · CONTRACT');
  await expect(page.getByText('简历 v17 · 待复核',{exact:true})).toBeVisible();
 });
+
+ test('wiki question stays in project and only completed turns enter history',async({page})=>{
+ const workspace={id:'wiki-chat-fixture',interest:'问答测试',role:'工程师',snapshots:[],jd_versions:[],messages:[],contributions:[],evidence:[],artifacts:[],runs:[{id:'wiki-run',status:'completed',request:{architecture:true},steps:[],result:{mode:'real',wiki:{generated_pages:{one:{title:'任务编排',content:'# 调度机制\n\n**并行执行**'},two:{title:'状态管理',content:'版本检查'}}}}}]};
+ const requests:any[]=[];
+ await page.route('**/api/workspaces',r=>r.fulfill({json:[workspace]}));
+ await page.route('**/api/workspaces/wiki-chat-fixture?summary=true',r=>r.fulfill({json:workspace}));
+ await page.route('**/api/workspaces/wiki-chat-fixture/wiki-chat',r=>{requests.push(r.request().postDataJSON());return r.fulfill({contentType:'application/x-ndjson',body:requests.length===1?'{"delta":"按角色独立执行"}\n{"done":true}\n':'{"delta":"部分回答"}\n{"error":"连接超时"}\n'});});
+ await page.addInitScript(()=>localStorage.setItem('repocareer.workspace','wiki-chat-fixture'));
+ await page.goto('/');await page.getByRole('button',{name:'查看项目全貌'}).click();
+ await expect(page.getByRole('heading',{name:'调度机制'})).toBeVisible();
+ await page.getByRole('button',{name:'向项目提问',exact:true}).click();await page.getByLabel('向项目提问',{exact:true}).fill('如何调度？');await page.getByRole('button',{name:'发送问题',exact:true}).click();await expect(page.getByText('按角色独立执行',{exact:true})).toBeVisible();
+ await page.getByLabel('辅助章节').selectOption('two');await page.getByLabel('向项目提问').fill('如何更新？');await page.getByRole('button',{name:'发送问题',exact:true}).click();await expect(page.getByRole('alert')).toHaveText('连接超时');
+ expect(requests[1].history).toHaveLength(2);expect(requests[1].page_id).toBe('two');
+ await page.getByRole('button',{name:'发送问题',exact:true}).click();await expect.poll(()=>requests.length).toBe(3);expect(requests[2].history).toHaveLength(2);
+ await page.getByRole('button',{name:'项目设置',exact:true}).click();await page.getByRole('button',{name:'项目全貌',exact:true}).click();await expect(page.getByText('按角色独立执行',{exact:true})).toHaveCount(0);
+ });

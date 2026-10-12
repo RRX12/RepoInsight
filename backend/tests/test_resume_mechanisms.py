@@ -63,7 +63,7 @@ def test_missing_mechanism_repairs_only_downstream_once():
     assert stages.count('DISCOVER_INCREMENTAL')==1
     assert stages.count('PRODUCT')==stages.count('JD_PLAN')==stages.count('DISCOVER')==1
     assert stages.count('CLAIM_VERIFY_RESELECT')==1
-    assert audit['reselected'] and len(audit['reviews'])==1 and audit['final_model_reviewed'] is False
+    assert audit['reselected'] and len(audit['reviews'])==2 and audit['final_model_reviewed'] is True
 
 def test_production_writer_keeps_project_spine_but_not_unselected_cards():
     stub=Stub();_,audit=write(None,MATERIAL,stub)

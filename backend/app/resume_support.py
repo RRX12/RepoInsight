@@ -107,10 +107,15 @@ def collect(s,wid):
         'user_materials':[{'id':e.id,'source':e.source_ref,'type':e.type,'completion_state':'unconfirmed' if e.type=='user_statement' else 'user_submitted_material','excerpt':e.excerpt[:2000]} for e in evidence],
         'limits':'Wiki为外部分析，不是系统运行认证；项目数据不是个人原创证明。被用户更正的结果覆盖历史实验。用户陈述未指定完成状态时不能推断已实现；“将X改成Y”等改造方向仅作为设计计划，不能替换原项目现有架构。明确纠正原项目事实的陈述须标来源和冲突，不等于用户完成改造。'}
     if not pages and not material['overview']:raise HTTPException(422,'Wiki没有可用正文，无法提炼真实项目亮点')
-    from .db import InteractionState,Improvement
+    from .db import InteractionState,Improvement,MemoryEvent
     interaction=s.get(InteractionState,wid)
     material['reported_metrics']=(interaction.data if interaction else {}).get('metrics',[])
-    material['improvement_states']=[{'id':i.id,'status':i.status,'details':i.details} for i in scoped(s,Improvement,wid)]
+    user_direction_ids={e.entity_id for e in scoped(s,MemoryEvent,wid) if e.operation=='create_improvement'}
+    material['improvement_states']=[{'id':i.id,'status':i.status,'details':i.details} for i in scoped(s,Improvement,wid) if i.id in user_direction_ids and i.status=='selected' and not i.details.get('deleted')]
+    current_id=(interaction.data if interaction else {}).get('current_id')
+    from .db import Artifact
+    previous=s.get(Artifact,current_id) if current_id else None
+    material['previous_resume']=previous.content if previous and previous.workspace_id==wid else ''
     fingerprint=hashlib.sha256(json.dumps(material,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
     return snap,material,fingerprint
 

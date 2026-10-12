@@ -285,3 +285,93 @@ def test_missing_coverage_is_explicit_unknown_and_verification_unanchored():
     assert audit['requirement_coverage'][0]['status']=='unknown'
     assert '模型未提供' in audit['requirement_coverage'][0]['reason']
     assert all('support' not in c and 'implementation_state' not in c for c in seen[0])
+
+
+def test_score_actions_reach_revision_and_final_reviews_are_bounded():
+    model=Stub()
+    def chat(prompt):
+        data=json.loads(model(prompt))
+        if prompt.startswith('WRITE') and model.round>1:
+            data['project_intro']=prose()
+            data['bullets']=[{'id':'b1','title':'版本化记忆','candidate_ids':['n1'],**prose()}]
+        stage=prompt.split('\n',1)[0]
+        if stage=='SELECT':
+            data['outline']=['简介保留角色场景；亮点说明版本校验']
+        if stage.startswith('REVIEW_'):
+            names=('role_fit','project_spine','readability') if stage=='REVIEW_HR' else ('engineering_depth','important_coverage')
+            data['scores']={n:{'score':2 if model.round==1 else 4,'reason':'当前机制表达不足' if model.round==1 else '机制表述明确',
+                               'part_ids':['b1'],'suggested_action':'保留版本校验条件，删除泛化价值描述' if model.round==1 else ''} for n in names}
+        return json.dumps(data,ensure_ascii=False)
+    _,audit=write(None,MATERIAL,chat)
+    writes=[p for stage,p in model.calls if stage=='WRITE']
+    assert len(writes)==2
+    assert '简介保留角色场景' in writes[0]
+    assert '保留版本校验条件' in writes[1] and 'score_actions' in writes[1]
+    assert sum(stage=='REVIEW_HR' for stage,_ in model.calls)==2
+    assert sum(stage=='REVIEW_TECHNICAL' for stage,_ in model.calls)==2
+    assert audit['final_model_reviewed'] and audit['status']=='passed', (audit['reviews'],audit['score_history'],audit['rejected_prose'])
+    assert audit['score_comparison']['before']['weighted_score']==50
+    assert audit['score_comparison']['after']['weighted_score']==100
+
+
+def test_low_score_without_action_does_not_loop_and_stays_pending():
+    model=Stub()
+    def chat(prompt):
+        data=json.loads(model(prompt))
+        if prompt.startswith('WRITE') and model.round>1:
+            data['project_intro']=prose()
+            data['bullets']=[{'id':'b1','title':'版本化记忆','candidate_ids':['n1'],**prose()}]
+        if prompt.startswith('REVIEW_'):
+            names=('role_fit','project_spine','readability') if prompt.startswith('REVIEW_HR') else ('engineering_depth','important_coverage')
+            data['scores']={n:{'score':2,'reason':'不足，但未给出可执行动作'} for n in names}
+        return json.dumps(data,ensure_ascii=False)
+    _,audit=write(None,MATERIAL,chat)
+    assert sum(stage=='WRITE' for stage,_ in model.calls)==1
+    assert audit['status']=='needs_review'
+    assert audit['score_comparison']['after'] is None
+
+
+def test_revision_still_low_stops_after_one_rewrite():
+    model=Stub()
+    def chat(prompt):
+        data=json.loads(model(prompt))
+        if prompt.startswith('WRITE') and model.round>1:
+            data['project_intro']=prose()
+            data['bullets']=[{'id':'b1','title':'版本化记忆','candidate_ids':['n1'],**prose()}]
+        if prompt.startswith('REVIEW_'):
+            names=('role_fit','project_spine','readability') if prompt.startswith('REVIEW_HR') else ('engineering_depth','important_coverage')
+            data['scores']={n:{'score':2,'reason':'机制表达不清','suggested_action':'根据现有事实说明版本条件','part_ids':['b1']} for n in names}
+        return json.dumps(data,ensure_ascii=False)
+    _,audit=write(None,MATERIAL,chat)
+    assert sum(stage=='WRITE' for stage,_ in model.calls)==2
+    assert audit['status']=='needs_review' and audit['final_model_reviewed']
+    assert audit['score_comparison']['after']['weighted_score']==50
+
+
+def test_final_review_budget_preserves_revision_without_claiming_final_score():
+    model=Stub()
+    def chat(prompt):
+        if model.round==2 and prompt.startswith('REVIEW_TECHNICAL'):
+            raise ProviderError('budget','resume_budget')
+        data=json.loads(model(prompt))
+        if prompt.startswith('WRITE') and model.round>1:
+            data['project_intro']=prose()
+            data['bullets']=[{'id':'b1','title':'版本化记忆','candidate_ids':['n1'],**prose()}]
+        if prompt.startswith('REVIEW_HR') and model.round==1:
+            data['feedback']=[{'category':'expression','issue':'精简表述','part_ids':['b1']}]
+        return json.dumps(data,ensure_ascii=False)
+    text,audit=write(None,MATERIAL,chat)
+    assert text and audit['status']=='needs_review'
+    assert not audit['final_model_reviewed']
+    assert audit['score_comparison']['after'] is None
+    assert audit['content_score']['status']=='not_evaluated'
+    assert sum(stage=='WRITE' for stage,_ in model.calls)==2
+
+
+def test_writer_receives_selected_optimizations_and_previous_resume():
+    model=Stub()
+    material={**MATERIAL,'previous_resume':'已保存参考稿，仅供改写','improvement_states':[{'id':'custom','status':'selected','details':{'title':'编排优化','proposal':'计划补充失败隔离','implementation':'not_started'}}]}
+    write(None,material,model)
+    prompt=next(p for stage,p in model.calls if stage=='WRITE')
+    assert '已保存参考稿，仅供改写' in prompt and '计划补充失败隔离' in prompt
+    assert '选中不等于实现' in prompt and 'not_started/in_progress仅放questions或limitations' in prompt

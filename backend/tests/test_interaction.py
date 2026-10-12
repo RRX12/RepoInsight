@@ -229,3 +229,41 @@ def test_material_change_during_generation_cannot_become_editor_current(client,w
     state=view(client,wid)
     assert state['current_resume']['id']==original['id'] and state['current_resume']['content']=='已保存正文'
     assert not any(p.get('artifact_id')=='stale' for p in state['proposals'])
+
+
+def test_direction_edit_delete_history_and_workspace_isolation(client,wid):
+    saved(client,wid)
+    r=mutate(client,wid,op('create_improvement',{'title':'方向','proposal':'明确处理流程'}));assert r.status_code==200
+    ident=r.json()['changes'][0]['id']
+    assert mutate(client,wid,op('update_improvement_decision',{'decision':'selected'},ident)).status_code==200
+    assert mutate(client,wid,op('report_improvement_completed',{},ident)).status_code==200
+    r=mutate(client,wid,op('edit_improvement',{'title':'更正方向','proposal':'修订后的设计'},ident));assert r.status_code==200
+    item=next(i for i in r.json()['state']['improvements'] if i['id']==ident)
+    assert item['details']['implementation']=='not_started'
+    assert r.json()['state']['current_resume']['review_status']=='needs_review'
+    other=client.post('/api/workspaces',json={'interest':'other'}).json()['id']
+    assert mutate(client,other,op('delete_improvement',{},ident)).status_code==404
+    r=mutate(client,wid,op('delete_improvement',{},ident));assert r.status_code==200
+    item=next(i for i in r.json()['state']['improvements'] if i['id']==ident)
+    assert item['details']['deleted'] and item['status']=='abandoned'
+    assert mutate(client,wid,op('update_improvement_decision',{'decision':'selected'},ident)).status_code==409
+    with Session() as s:
+        events=list(s.scalars(select(MemoryEvent).where(MemoryEvent.entity_id==ident)))
+        assert any(e.operation=='edit_improvement' and e.before['details']['title']=='方向' for e in events)
+
+
+def test_resume_material_only_contains_selected_directions(client,wid):
+    from backend.app.db import Snapshot,Run,Improvement
+    from backend.app.resume_support import collect
+    with Session() as s:
+        snap=Snapshot(workspace_id=wid,owner='a',repo='b',commit_sha='a'*40);s.add(snap);s.flush()
+        s.add(Run(workspace_id=wid,request={'snapshot_id':snap.id},result={'wiki':{'generated_pages':{'x':{'title':'overview','content':'项目原文'}}}},idempotency_key='wiki'))
+        for ident,status,deleted in [('chosen','selected',False),('other','proposed',False),('deleted','selected',True),('system','selected',False)]:
+            s.add(Improvement(id=ident,workspace_id=wid,status=status,details={'title':ident,'proposal':'方案','deleted':deleted}))
+        for ident in ['chosen','other','deleted']:
+            s.add(MemoryEvent(workspace_id=wid,entity_type='interaction_change',entity_id=ident,operation='create_improvement',before={},after={}))
+        s.flush();_,material,before=collect(s,wid)
+        assert [i['id'] for i in material['improvement_states']]==['chosen']
+        s.get(Improvement,'chosen').status='proposed';s.flush()
+        _,material,after=collect(s,wid)
+        assert not material['improvement_states'] and before!=after

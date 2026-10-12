@@ -393,14 +393,14 @@ def generate(snapshot,material,chat=None,source_reader=None):
             return choice
         choice=select('SELECT');metrics=metric_records(material)
         skill=(ROOT/'SKILL.md').read_text(encoding='utf-8')+'\n'+(ROOT/'references'/'writing-template.md').read_text(encoding='utf-8')
-        reviews=[];issues=[];reselected=False;draft=None;blocking_parts=set()
+        reviews=[];issues=[];reselected=False;draft=None;blocking_parts=set();score_actions=[];score_history=[];final_model_reviewed=False
         for iteration in range(2):
             cards,writable=writing_pack(candidates,claims,choice)
             spine=project_spine(claims)
             prose_facts={**spine,**writable}
             if not writable:raise ProviderError('选中主题没有可写事实，已停止空稿生成','resume_no_candidates')
             try:
-                draft=call('WRITE',ResumeDraft,{'context':ctx.model_dump(),'project_spine':{'usage':'项目简介可引用；亮点禁止扩展未选主题','claim_ids':list(spine)},'job_focus':[{'requirement_id':r.requirement_id,'description':r.description,'priority':r.priority,'origin':r.origin} for r in target.requirements if any(r.requirement_id in c['requirement_ids'] for c in cards)],'choice':{'selected_ids':choice.selected_ids},'writing_constraints':{'max_bullets':min(4,len(choice.selected_ids)),'each_candidate_once':True,'intro_target_chars':[60,130],'bullet_target_chars':[60,140]},'candidates':cards,'claims':[c.model_dump() for c in prose_facts.values()],'metrics':[m.model_dump() for m in metrics.values() if m.contribution_id in {c.contribution_id for c in writable.values() if c.contribution_id}],'previous':draft.model_dump() if draft else None,'fix':issues,'review_actions':{category:[{'issue':f['issue'],'part_ids':f.get('part_ids',[]),'claim_ids':f.get('claim_ids',[])} for review in reviews for perspective in review['perspectives'] for f in perspective['feedback'] if f['category']==category] for category in ('expression','fact_attribution','mechanism_missing','candidate_omission','needs_evidence')}},skill+'\n首轮根据HR选题和已核验机制卡片统一写作，按同一业务链路去重，保留互补机制。第二轮只根据上一版正文与独立双视角意见修订一次。简介可以使用project_spine中的已核验项目主线事实，技术亮点和成果只消费已选机制卡片和支持claim，job_focus仅指导表达重点，不作为项目实现证据；problem/reason是选题解释，不是作者动机证据。按业务约束—关键机制—边界处理组织简洁正文，不能把模块存在写成已接通链路。无已映射步骤时只写原子事实，不补因果。返回结构化中文草稿，不输出Markdown。简介及每条核心断言绑定claim_ids，不新增解释；条目绑定候选/贡献/指标。成果可null，不强制数字。计划、缺证据、未来方向放questions/limitations。参考稿只说明项目能力，不能本人主导；个人稿亮点必须有确认贡献，无贡献可空。正文数字只用正确指标含义/单位/样本/环境及用户来源，不把配置阈值写性能效果。通常每条1–2句，保留有价值的边界条件。')
+                draft=call('WRITE',ResumeDraft,{'context':ctx.model_dump(),'project_spine':{'usage':'项目简介可引用；亮点禁止扩展未选主题','claim_ids':list(spine)},'job_focus':[{'requirement_id':r.requirement_id,'description':r.description,'priority':r.priority,'origin':r.origin} for r in target.requirements if any(r.requirement_id in c['requirement_ids'] for c in cards)],'choice':choice.model_dump(),'selected_optimizations':material.get('improvement_states',[]),'previous_saved_resume':material.get('previous_resume',''),'score_actions':score_actions,'writing_constraints':{'max_bullets':min(4,len(choice.selected_ids)),'each_candidate_once':True,'intro_target_chars':[60,130],'bullet_target_chars':[60,140]},'candidates':cards,'claims':[c.model_dump() for c in prose_facts.values()],'metrics':[m.model_dump() for m in metrics.values() if m.contribution_id in {c.contribution_id for c in writable.values() if c.contribution_id}],'previous':draft.model_dump() if draft else None,'fix':list(dict.fromkeys(issues)),'review_actions':{category:[{'issue':f['issue'],'part_ids':f.get('part_ids',[]),'claim_ids':f.get('claim_ids',[])} for review in reviews for perspective in review['perspectives'] for f in perspective['feedback'] if f['category']==category] for category in ('expression','fact_attribution','mechanism_missing','candidate_omission','needs_evidence')}},skill+'\n已选优化方向是用户补充依据，结合原项目和已保存简历重写；未选择方向不作为新增优化。原简历不是事实来源，仍需当前证据支持。选中不等于实现，not_started/in_progress仅放questions或limitations中作为计划；user_reported_done也不是测试认证或个人贡献证明。首轮根据HR选题和已核验机制卡片统一写作，按同一业务链路去重，保留互补机制。第二轮只根据上一版正文与独立双视角意见修订一次。简介可以使用project_spine中的已核验项目主线事实，技术亮点和成果只消费已选机制卡片和支持claim，job_focus仅指导表达重点，不作为项目实现证据；problem/reason是选题解释，不是作者动机证据。按业务约束—关键机制—边界处理组织简洁正文，不能把模块存在写成已接通链路。无已映射步骤时只写原子事实，不补因果。返回结构化中文草稿，不输出Markdown。简介及每条核心断言绑定claim_ids，不新增解释；条目绑定候选/贡献/指标。成果可null，不强制数字。计划、缺证据、未来方向放questions/limitations。参考稿只说明项目能力，不能本人主导；个人稿亮点必须有确认贡献，无贡献可空。正文数字只用正确指标含义/单位/样本/环境及用户来源，不把配置阈值写性能效果。通常每条1–2句，保留有价值的边界条件。')
             except ProviderError as exc:
                 if iteration==0 or exc.code!='resume_budget':raise
                 issues.append('修订预算已耗尽，保留首稿和待复核意见，未完成最终修订')
@@ -409,16 +409,31 @@ def generate(snapshot,material,chat=None,source_reader=None):
                 break
             if draft.output_mode!=ctx.output_mode:raise ProviderError('输出类型与输入不一致','resume_contract')
             issues=check_draft(draft,prose_facts,candidates,choice,metrics,contributions)
-            if iteration==1:
-                blocking_parts=set()
-                emit('REVISION_CHECK','completed',{'issues':issues,'model_reviewed':False})
-                break
+            final_model_reviewed=False
+            score_actions=[]
             perspectives=[];omissions=[];blocking_parts=set();fact_repairs=set()
             review_facts={i:c for i,c in claims.items() if c.support=='supported' and c.implementation_state=='implemented'}
             review_cards=[writing_pack({cid:c},claims,Choice(selected_ids=[cid],reasons={}))[0][0] for cid,c in candidates.items()]
             for role in ('HR','TECHNICAL'):
                 review_refs={i for c in review_facts.values() for i in c.evidence_ids}
-                result=call('REVIEW_'+role,QualityReview,{'draft':draft.model_dump(),'claims':[c.model_dump() for c in review_facts.values()],'claim_limits':[{'id':i,'support':c.support,'implementation_state':c.implementation_state,'attribution':c.attribution} for i,c in claims.items() if i not in review_facts],'candidates':review_cards,'choice':{'selected_ids':choice.selected_ids,'coverage':[c.model_dump() for c in choice.coverage]},'requirements':target.model_dump(),'evidence':[evidence[i].model_dump() for i in review_refs if i in evidence] if role=='TECHNICAL' else []},'只做'+role+'独立评审，不读取其他意见。参考稿归属为项目上游能力，仓库地址不能证明个人贡献；没有个人经历不能否定上游事实。unknown/proposed/in_progress和用户提议不能作为已实现架构或候选遗漏证据。候选机制描述是待核验线索，只有supported且implemented的claim可支持正文。按当前角色模板的职责独立评审。无证据用mechanism_missing或fact_attribution提出，不自动补写。分类：expression只改表达；candidate_omission只在已提供材料证明重要主题未发现时提出，不创造事实；mechanism_missing指出候选哪条关键连接缺失；fact_attribution指事实或归属错误，若claim本身有误同时列claim_ids供局部重核，blocking=true列part_ids（intro/outcome/条目id）；needs_evidence为无法内部解决的用户材料缺口。important_omission是历史兼容分类，只引用已知候选。路径只能用已提供线索。风格问题不blocking，没有成果不是失败。supported不是认证。')
+                try:
+                    result=call('REVIEW_'+role,QualityReview,{'draft':draft.model_dump(),'claims':[c.model_dump() for c in review_facts.values()],'claim_limits':[{'id':i,'support':c.support,'implementation_state':c.implementation_state,'attribution':c.attribution} for i,c in claims.items() if i not in review_facts],'candidates':review_cards,'choice':{'selected_ids':choice.selected_ids,'coverage':[c.model_dump() for c in choice.coverage]},'requirements':target.model_dump(),'evidence':[evidence[i].model_dump() for i in review_refs if i in evidence] if role=='TECHNICAL' else []},'只做'+role+'独立评审，不读取其他意见。参考稿归属为项目上游能力，仓库地址不能证明个人贡献；没有个人经历不能否定上游事实。unknown/proposed/in_progress和用户提议不能作为已实现架构或候选遗漏证据。候选机制描述是待核验线索，只有supported且implemented的claim可支持正文。按当前角色模板的职责独立评审。无证据用mechanism_missing或fact_attribution提出，不自动补写。分类：expression只改表达；candidate_omission只在已提供材料证明重要主题未发现时提出，不创造事实；mechanism_missing指出候选哪条关键连接缺失；fact_attribution指事实或归属错误，若claim本身有误同时列claim_ids供局部重核，blocking=true列part_ids（intro/outcome/条目id）；needs_evidence为无法内部解决的用户材料缺口。important_omission是历史兼容分类，只引用已知候选。路径只能用已提供线索。风格问题不blocking，没有成果不是失败。supported不是认证。')
+                except ProviderError as exc:
+                    if exc.code != "resume_budget":raise
+                    issues.append("双视角评审预算不足，当前稿待复核")
+                    emit("REVISION_STOP","review_budget_exhausted",{"iteration":iteration+1})
+                    break
+                owned=('role_fit','project_spine','readability') if role=='HR' else ('engineering_depth','important_coverage')
+                valid_parts={'intro','outcome'}|{b.id for b in draft.bullets}
+                for dimension,rating in result.scores.items():
+                    if dimension not in owned or rating.score>=3:continue
+                    if rating.suggested_action.strip() and set(rating.part_ids)<=valid_parts:
+                        action={'dimension':dimension,'reason':rating.reason,'action':rating.suggested_action,'part_ids':rating.part_ids,
+                                'constraint':'仅据已有事实调整表达；缺失实现或证据只能保留缺口，不能补造'}
+                        existing=next((a for a in score_actions if a['action']==action['action'] and a['part_ids']==action['part_ids']),None)
+                        if existing:existing['dimensions'].append(dimension)
+                        else:score_actions.append({**action,'dimensions':[dimension]})
+                        issues.append('评分改进：'+rating.suggested_action)
                 for f in result.feedback:
                     if not set(f.evidence_ids)<=set(evidence) or not set(f.jd_requirement_ids)<={r.requirement_id for r in target.requirements}:
                         raise ProviderError('评审引用未知证据或岗位职责；未采用该意见','resume_contract')
@@ -442,9 +457,15 @@ def generate(snapshot,material,chat=None,source_reader=None):
                         elif len(draft.questions)<3:draft.questions.append(f.issue)
                     elif len(draft.questions)<3:draft.questions.append(f.issue)
                 perspectives.append({'perspective':role.lower(),**result.model_dump()})
-                if not result.approved and not any(f.category in ('expression','important_omission','candidate_omission','mechanism_missing','fact_attribution') for f in result.feedback):
+                if not result.approved and not score_actions and not any(f.category in ('expression','important_omission','candidate_omission','mechanism_missing','fact_attribution') for f in result.feedback):
                     emit('REVISION_STOP','no_actionable_feedback',{'perspective':role,'reason':'无可执行意见，不仅因低分或未通过标记重复写作'})
             reviews.append({'iteration':iteration+1,'issues':list(dict.fromkeys(issues)),'perspectives':perspectives})
+            final_model_reviewed=len(perspectives)==2
+            current_score=reviewed_score([reviews[-1]],final_model_reviewed)
+            score_history.append({'iteration':iteration+1,'score':current_score,'actions':list(score_actions)})
+            if iteration==1 or not final_model_reviewed:
+                issues.extend("修订后仍缺机制或主题："+f.issue for f in omissions)
+                break
             if fact_repairs and iteration==0:
                 claims.update(verify(Discovery(claims=[claims[i] for i in sorted(fact_repairs)],candidates=[]),'CLAIM_VERIFY_FEEDBACK'))
                 if not omissions:choice=select('RESELECT_FACT')
@@ -463,8 +484,9 @@ def generate(snapshot,material,chat=None,source_reader=None):
             elif omissions:issues.extend('重选已达一次上限：'+f.issue for f in omissions)
             if not issues:break
         status='passed' if not issues else 'needs_review'
-        if any(not p['approved'] and not p['feedback'] for r in reviews for p in r['perspectives']):status='needs_review'
-        if any(f['category']=='needs_evidence' for r in reviews for p in r['perspectives'] for f in p['feedback']):status='needs_review'
+        if any(not p['approved'] for r in reviews[-1:] for p in r['perspectives']):status='needs_review'
+        if any(f['category']=='needs_evidence' for r in reviews[-1:] for p in r['perspectives'] for f in p['feedback']):status='needs_review'
+        if not final_model_reviewed or (score_history and score_history[-1]['score'].get('threshold_met') is False):status='needs_review'
         if any(v=='模型未提供舍弃依据，待人工复核' for v in choice.omitted.values()):status='needs_review'
         if ctx.output_mode=='personal_resume' and not draft.bullets:status='needs_review'
         # Unsafe mapped paragraphs are removed even if bounded review failed; safe parts survive.
@@ -483,7 +505,7 @@ def generate(snapshot,material,chat=None,source_reader=None):
             draft.questions=['你实际修改或实现了哪个模块？','该改动解决了什么问题，与原项目基线有何不同？','是否有测试样本或报告可说明结果？']
         selected=[{'id':c.candidate_id,'title':c.title,'jd_relation':choice.reasons.get(c.candidate_id,''),'hr_value':c.reason,'interview_focus':'；'.join(s['text'] for s in writing_pack({c.candidate_id:c},claims,Choice(selected_ids=[c.candidate_id],reasons={}))[0][0]['mechanism_steps']) or '支持事实尚不足以说明关键机制，需复核','reason':choice.reasons.get(c.candidate_id,''),'source_refs':list(dict.fromkeys(i for cid in c.claim_ids for i in claims[cid].evidence_ids)),'state':'upstream_and_contribution_claims_separate','card':writing_pack({c.candidate_id:c},claims,Choice(selected_ids=[c.candidate_id],reasons={}))[0][0]} for c in candidates.values() if c.candidate_id in choice.selected_ids]
         prose_map=[{'part':getattr(p,'id','intro' if p is draft.project_intro else 'outcome'),'text':p.text,'claim_ids':p.claim_ids,'contribution_ids':p.contribution_ids,'metric_ids':p.metric_ids,'evidence_ids':list(dict.fromkeys(i for cid in p.claim_ids if cid in claims for i in claims[cid].evidence_ids))} for p in [draft.project_intro,*draft.bullets,*([draft.outcome] if draft.outcome else [])]]
-        audit={'kind':'writing_review','mode':'skill_model','schema_version':VERSION,'generation_context':ctx.model_dump(),'status':status,'iterations':iteration+1,'final_model_reviewed':iteration==0,'writing_strategy':'single_writer_distinct_reviews','reviews':reviews,'trace':trace,'structured_draft':draft.model_dump(),'selection':{'selected':selected,'omitted':list(choice.omitted.values()),'outline':choice.outline,'project_value':product.model_dump()},'candidates':[c.model_dump() for c in candidates.values()],'choice':choice.model_dump(),'generated_claims':[c.model_dump() for c in claims.values()],'metrics':[m.model_dump() for m in metrics.values()],'source_evidence':[e.model_dump() for i,e in evidence.items() if e.kind!='wiki' or any(i in c.evidence_ids for c in claims.values())],'source_reads':source_trace,'project_spine_claim_ids':list(spine),'requirements':target.model_dump(),'requirement_coverage':[c.model_dump() for c in choice.coverage],'job_evidence':retrieval,'project_map':mapped,'mapping_inventory':inventory,'material_index':[{k:v for k,v in row.items() if k!='content'} for row in section_index(material)],'reselected':reselected,'rejected_prose':rejected,'questions':draft.questions[:3],'limits':draft.limitations,'harness':{'trace_id':h.trace_id,'calls':h.records,'usage':provider.usage if provider else [],'max_generation_calls':max_downstream},'skill_sha256':sha256(skill),'note':'源码存在、测试定义、用户贡献、运行效果分别记录；语义核验和同源双审不是人工认证。历史Wiki版本未知，不追认当前源码。'}
+        audit={'kind':'writing_review','mode':'skill_model','schema_version':VERSION,'generation_context':ctx.model_dump(),'status':status,'iterations':iteration+1,'final_model_reviewed':final_model_reviewed,'writing_strategy':'single_writer_distinct_reviews','reviews':reviews,'trace':trace,'structured_draft':draft.model_dump(),'selection':{'selected':selected,'omitted':list(choice.omitted.values()),'outline':choice.outline,'project_value':product.model_dump()},'candidates':[c.model_dump() for c in candidates.values()],'choice':choice.model_dump(),'generated_claims':[c.model_dump() for c in claims.values()],'metrics':[m.model_dump() for m in metrics.values()],'source_evidence':[e.model_dump() for i,e in evidence.items() if e.kind!='wiki' or any(i in c.evidence_ids for c in claims.values())],'source_reads':source_trace,'project_spine_claim_ids':list(spine),'requirements':target.model_dump(),'requirement_coverage':[c.model_dump() for c in choice.coverage],'job_evidence':retrieval,'project_map':mapped,'mapping_inventory':inventory,'material_index':[{k:v for k,v in row.items() if k!='content'} for row in section_index(material)],'reselected':reselected,'rejected_prose':rejected,'questions':draft.questions[:3],'limits':draft.limitations,'harness':{'trace_id':h.trace_id,'calls':h.records,'usage':provider.usage if provider else [],'max_generation_calls':max_downstream},'skill_sha256':sha256(skill),'note':'源码存在、测试定义、用户贡献、运行效果分别记录；语义核验和同源双审不是人工认证。历史Wiki版本未知，不追认当前源码。'}
         audit['prose_claim_map']=prose_map
         audit['discovery_history']=discovery_history
         audit['theme_trace']=[{'candidate_id':cid,'title':card.title,
@@ -492,8 +514,13 @@ def generate(snapshot,material,chat=None,source_reader=None):
             'final_bullet_ids':[b.id for b in draft.bullets if cid in b.candidate_ids],
             'review_feedback':[f for r in reviews for p in r['perspectives'] for f in p['feedback'] if cid in f.get('candidate_ids',[]) or set(card.claim_ids)&set(f.get('claim_ids',[]))]
             } for cid,card in candidates.items()]
-        audit['fact_gate']=fact_gate(issues,rejected,reviews,iteration==0)
-        audit['content_score']=reviewed_score(reviews,iteration==0)
+        audit['fact_gate']=fact_gate(issues,rejected,reviews[-1:],final_model_reviewed and not rejected)
+        audit['content_score']=reviewed_score(reviews[-1:],final_model_reviewed and not rejected)
+        audit['content_score']['applies_to']='reviewed_revision' if iteration==1 else 'first_draft'
+        if rejected:audit['content_score']['applies_to']='before_safety_filtering'
+        audit['final_model_reviewed']=final_model_reviewed and not rejected
+        audit['score_history']=score_history
+        audit['score_comparison']={'before':score_history[0]['score'] if score_history else None,'after':score_history[-1]['score'] if iteration==1 and final_model_reviewed else None}
         emit('RENDER','completed',{'status':status,'selected_ids':choice.selected_ids,'claim_ids':[c.id for c in claims.values()]})
         if status=='passed':h.save_stages(stage_cache)
         return render(draft),audit

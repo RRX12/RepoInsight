@@ -87,8 +87,23 @@ def mutation(s,wid,body,source_message=None):
             if d['supersedes_id']:require(s,Improvement,d['supersedes_id'],wid)
             d.update(decision='exploring',implementation='not_started',version=1)
             jd=latest_jd(s,wid);saved=Improvement(workspace_id=wid,jd_version_id=jd.id if jd else None,details=d,status='proposed');s.add(saved);s.flush();ident=saved.id;after=asdict(saved)
+        elif kind in ('edit_improvement','delete_improvement'):
+            saved=require(s,Improvement,ident,wid);before=asdict(saved);d=copy.deepcopy(saved.details)
+            if d.get('deleted'):raise HTTPException(409,'该方向已删除')
+            if kind=='delete_improvement':
+                if op.data:raise HTTPException(422,'删除方向不接收额外字段')
+                d.update(deleted=True,decision='rejected');saved.status='abandoned'
+            else:
+                if set(op.data)-{'title','problem','proposal'}:raise HTTPException(422,'方向编辑字段无效')
+                checked=validate(ImprovementData,{**{k:v for k,v in d.items() if k in ImprovementData.model_fields},**op.data})
+                if not checked['title'].strip() or not checked['proposal'].strip():raise HTTPException(422,'请填写方向标题和具体内容')
+                for key in ('title','problem','proposal'):d[key]=checked[key]
+                # Edited proposals require a fresh completion declaration.
+                d['implementation']='not_started'
+            d['version']=d.get('version',1)+1;saved.details=d;after=asdict(saved)
         elif kind in ('update_improvement_decision','report_improvement_completed'):
             saved=require(s,Improvement,ident,wid);before=asdict(saved);d=copy.deepcopy(saved.details)
+            if d.get('deleted'):raise HTTPException(409,'该方向已删除')
             if kind=='update_improvement_decision':
                 if set(op.data)-{'decision','implementation'} or op.data.get('decision') not in ('exploring','selected','deferred','rejected'):raise HTTPException(422,'决策状态无效')
                 if saved.status=='stale' and op.data['decision']=='selected':raise HTTPException(409,'方案基于旧快照，请先重新评估')

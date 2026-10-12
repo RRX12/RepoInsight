@@ -32,7 +32,7 @@ pytest 使用临时数据库与源码请求 mock。Playwright 使用8001/5173与
 
 生产模型流程：全量有效 Wiki 分块映射 → 无 JD 项目全貌 → 最多 6 个岗位调查问题 → Wiki 召回 → 候选发现 → 问题驱动固定 SHA 补证/卡片补全 → 独立 claim 核验 → 1–4 个主题与职责覆盖 → 结构化 Draft → 独立 HR/技术审查 → 最多一次补证重选/修订 → 确定性 Markdown。实际加载 backend/skills/resume_composition/SKILL.md 与 references/writing-template.md。每段关联 claim，缺证据不凑能力；成果可省略。独立请求仍使用同源模型，不是招聘结论或人工认证。
 
-默认最多 128 次映射请求（64 批、每批最多一次引用修复），后续请求预算默认 16、RESUME_GENERATION_CALLS 限定 8–20，包含结构修复及重选；最多两轮写作，首稿一次独立HR/技术双审，修订稿只做程序契约校验。API 报告用量达到 RESUME_MAX_REPORTED_TOKENS（默认 250000）后停止后续请求。UTF-8 字节估计不等于实际计費量，缺少 usage 表示未知。
+默认最多 128 次映射请求（64 批、每批最多一次引用修复），后续请求预算默认 16、RESUME_GENERATION_CALLS 限定 8–20，包含结构修复及重选；最多两轮写作，首稿一次独立HR/技术双审，修订稿做程序契约校验及一次独立双审；评分低且有可执行建议时最多修订一次，保留前后评分。API 报告用量达到 RESUME_MAX_REPORTED_TOKENS（默认 250000）后停止后续请求。UTF-8 字节估计不等于实际计費量，缺少 usage 表示未知。
 
 模型客户端及材料契约集中在 backend/app/resume_support.py。凭证默认读取 data/deepwiki-open/.env 中 DEEPSEEK_API_KEY/DEEPSEEK_BASE_URL；用 RESUME_MODEL_ENV_FILE、RESUME_MODEL_API_KEY、RESUME_MODEL_BASE_URL 覆盖。写作模型由 **RESUME_MODEL** 指定，未指定默认 deepseek-v4-pro，不再继承 DEEPWIKI_MODEL。Wiki 映射缓存默认 REPOCAREER_DATA/resume-analysis-cache，由 RESUME_ANALYSIS_CACHE_DIR 覆盖；按工作区/快照/材料/模型端点/指令隔离，JD 与贡献每次新读。失败批次不缓存，不静默丢弃后续 Wiki。
 

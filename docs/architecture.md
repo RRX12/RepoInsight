@@ -176,3 +176,16 @@ Alembic 001→002 为纯增量建表/部分唯一索引，不重写事实/旧正
 历史write_legacy仍被显式评测入口引用，保留用途和原删除条件；历史双稿审计无需迁移，新生产不再生成双稿。没有新依赖、迁移或Agent框架。
 
 评测准备（无模型）：`.venv/Scripts/python scripts/eval-resume-quality.py --prepare-only --checkpoint-input data/resume-mechanism-regression/input.json --checkpoint-before data/resume-mechanism-regression/before.json --theme cand_memory_version --benchmark fixtures/resume-quality/memory-review.json --output data/resume-role-regression/prepared-memory.json`。这些本地冻结文件不入Git；缺文件不能声称复现。真实验证另加--real和有界授权；--resume-checkpoint累计计费请求，--restart-downstream仅清旧响应，不重置累计额度。
+
+### 有界评分修订（2026-10-12）
+复用resume_quality生产WRITE/REVIEW_HR/REVIEW_TECHNICAL入口，完整Choice与去重后的score_actions交给WRITE；首稿和修订稿分别双审。低分建议仅指导已有事实表达，事实与机制补证仍由Feedback类别驱动。最多两稿；最后一稿意见、评分决定待复核状态，旧意见仅留历史。预算中断保留当前稿，审计记录是否完整双审；安全过滤后分数明确归属过滤前正文。无新模块、Agent或模型客户端。
+
+## 选择式方向与原生Wiki入口（2026-10-13）
+OptimizationDirections复用interaction mutations/version/receipt/MemoryEvent。新增edit_improvement、delete_improvement；删除为details.deleted墓碑及abandoned状态，保留证据历史且不可再次选择；修改完成方向重置为未开始。collect仅将selected且未删除方向提供给模型，同时传入当前保存稿供改写，材料指纹涵盖两者。ProjectIteration复用原生成/接受建议接口；用户页全局生成按钮通过页面事件触发现有组件，不另造保存路径。讨论及信息维护继续在后台兼容入口供历史贡献维护，删除条件是用户侧贡献维护完全迁移且消费者回归完成。原生问答需独立DeepWiki网页服务，DEEPWIKI_WEB_URL不含密钥，只用于构造仓库原生页链接；不是将8002 API当作网页。
+
+## 同页 Wiki 问答
+architecture-entry → WikiOverview（目录/Markdown/按需Mermaid/内存会话）→ POST /api/workspaces/{wid}/wiki-chat → wiki_chat.prepare（Run/Snapshot工作区校验、演示拒绝、固定服务配置）→ DeepWiki /chat/completions/stream。接口只读；一次请求无自动重试，180秒总预算/90秒读取超时，回答上限20000字符；NDJSON区分delta/error/done，只有done才加入后续上下文。切换项目/分析版本或离开页面取消接收；不能保证上游停止计费。新增react-markdown/remark-gfm复用成熟Markdown解析，Mermaid按需加载且严格模式/沙箱展示，不执行Wiki HTML或加载外部图片。原生前端及DEEPWIKI_WEB_URL保留为可选外部工具配置，不再是用户页依赖；未自动启动或移除外部服务。
+
+WikiOverview以view区分overview/ask，复用单个问答状态与原wiki-chat接口，不新增第二套流程。两页间保持挂载，其他页面卸载并取消接收。
+
+优化方向来源判定：前端选框/管理按钮与resume_support.collect共同依据工作区内create_improvement事件；系统建议仅展示，不纳入用户选择补充。原项目事实仍来自Wiki，不因隐藏选框而删除项目材料。
