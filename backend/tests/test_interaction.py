@@ -1,5 +1,6 @@
 """State/API regressions. Model fixtures verify transport only, not model quality."""
 import uuid
+import pytest
 from sqlalchemy import select
 from backend.app.db import Session,MemoryEvent,InteractionState,Artifact
 from backend.app import interaction_service as svc
@@ -212,3 +213,19 @@ def test_interrupted_generation_key_cannot_replay_old_artifact_after_edit(client
     assert request().status_code==409
     assert len(calls)==1
     assert view(client,wid)['current_resume']['content']=='生成中改稿'
+
+@pytest.mark.parametrize('change',['jd','metric'])
+def test_material_change_during_generation_cannot_become_editor_current(client,wid,monkeypatch,change):
+    original=saved(client,wid,'已保存正文')
+    assert mutate(client,wid,op('create_metric',{'name':'比例','value':70,'unit':'%'})).status_code==200
+    metric=view(client,wid)['metrics'][0]
+    def generating(s,w,body):
+        operation=op('update_jd',{'jd':'新职责','role':'新岗位'}) if change=='jd' else op('update_metric',{'value':80},metric['id'])
+        assert mutate(client,wid,operation).status_code==200
+        return {'id':'stale','content':'旧材料稿'}
+    monkeypatch.setattr('backend.app.artifact_service.create_artifact',generating)
+    response=post(client,wid,'/generate',writing_mode='reference')
+    assert response.status_code==409
+    state=view(client,wid)
+    assert state['current_resume']['id']==original['id'] and state['current_resume']['content']=='已保存正文'
+    assert not any(p.get('artifact_id')=='stale' for p in state['proposals'])

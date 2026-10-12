@@ -1,0 +1,68 @@
+{
+  "kind": "static_source_review_by_codex_not_runtime_validation",
+  "repo": "qiukuizhenpiaoliang-dot/cp-dance",
+  "commit_sha": "21d9b9b43409d13bbcfefc2f26f7cbae2640c3b6",
+  "theme": "cand_memory_version",
+  "path": "lib/character-memory.ts",
+  "source_hash": "7097a3a97e4409ecaee8adefaca3bc6f13864e445f01638169d9460946e3fa74",
+  "source_cache": "data/workspaces/d91c44f569b24870a008106ca72beede/source-cache/34205859a7306051dc29ba292d225e997030627b0e3b7559afcbdd85bb7701e9.json",
+  "facts": [
+    {
+      "id": "memory-read",
+      "lines": [
+        349,
+        390
+      ],
+      "statement": "按互动对象、turn和taskType评分选择记忆，以文件数和字符预算组织摘要及正文摘录，返回revisionId；证据事件过滤到当前可见集合。",
+      "validation_level": "code_present"
+    },
+    {
+      "id": "memory-evidence",
+      "lines": [
+        429,
+        437
+      ],
+      "statement": "提案限定当前互动对象，要求非空内容和至少一个可见事件；引用不可见事件会被拒绝。",
+      "validation_level": "code_present"
+    },
+    {
+      "id": "memory-revision",
+      "lines": [
+        486,
+        498
+      ],
+      "statement": "已有文档更新需baseRevisionId等于最新版本且该版本在本次readRevisions中；不存在文档/重复新建/无效基线被拒绝。",
+      "validation_level": "code_present"
+    },
+    {
+      "id": "memory-fallback",
+      "lines": [
+        501,
+        503
+      ],
+      "statement": "未接受模型提案时采用defaultProposal，而非整个记忆提交流程无条件停止。",
+      "validation_level": "code_present"
+    },
+    {
+      "id": "memory-save",
+      "lines": [
+        523,
+        540
+      ],
+      "statement": "新增revision绑定前一版本和可见证据，保留认识状态和置信度，历史保留最多12个版本。",
+      "validation_level": "code_present"
+    }
+  ],
+  "unknowns": [
+    "只审查该文件，不证明全部调用点已集成或测试通过。",
+    "未确认原Wiki所写latest/manual/weighted自动合并策略；未命中不等于全仓不存在。",
+    "仓库能力不证明用户个人贡献；没有运行效果测量。"
+  ],
+  "old_failure": "旧候选已发现记忆主题，但主要描述Wiki版本快照和合并策略；核验又把缺个人贡献/测试作为所有记忆claim insufficient的理由。后者此前已修复，本轮不重复记功。",
+  "acceptance": [
+    "允许不同合理表述；不可将角色记忆直接等同用户个性化RAG。",
+    "至少表达读取条件、版本检查和拒绝后的边界；有序步骤需有来源。",
+    "事实门禁独立于评分；人工小改可用及重复真实模型运行仍待完成。"
+  ],
+  "review_author": "Codex；待用户人工验收"
+}

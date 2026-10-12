@@ -114,18 +114,37 @@ class SourceReader:
         """Structure-friendly windows around matches; overlap preserves nearby guards/callers."""
         self.read_source(repo,sha,path) # fills immutable full-file cache
         cached=self._cache(repo+'|'+sha+'|'+path,lambda:None);lines=cached['text'].splitlines()
-        hits=[i for i,line in enumerate(lines) if any(t.lower() in line.lower() for t in terms if t)]
-        centers=hits[:3] or [0];ranges=[]
+        terms=list(dict.fromkeys(t.lower() for t in terms if t))
+        hits=[i for i,line in enumerate(lines) if any(t in line.lower() for t in terms)]
+        # Early declarations often mention every symbol but omit execution. Rank
+        # bounded windows by term diversity and actual control-flow, not file order.
+        windows=[]
+        frequency={t:sum(t in line.lower() for line in lines) for t in terms}
+        for center in hits:
+            start=max(0,center-45);end=min(len(lines),center+76)
+            text='\n'.join(lines[start:end]).lower()
+            found={t for t in terms if t in text}
+            controls=sum(bool(re.search(r'\b(if|return|throw|raise|except|catch|await|for|while)\b',line)) for line in lines[start:end])
+            windows.append((start,end,found,min(controls,12)))
+        ranges=[];covered=set()
+        while windows and len(ranges)<3:
+            best=max(windows,key=lambda w:(sum(1+1/max(1,frequency[t]) for t in w[2]-covered)+w[3]*0.5,-w[0]))
+            start,end,found,_=best;ranges.append((start+1,end));covered.update(found)
+            windows=[w for w in windows if max(0,min(end,w[1])-max(start,w[0]))<0.5*min(end-start,w[1]-w[0])]
+        if not ranges:ranges=[(1,min(61,len(lines)))]
         if path.endswith('.py'):
             try:
                 nodes=[n for n in ast.walk(ast.parse(cached['text'])) if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef)) and any(n.lineno<=i+1<=n.end_lineno for i in hits)]
                 nodes.sort(key=lambda n:n.end_lineno-n.lineno)
-                for n in nodes:
-                    start=max(1,n.lineno-8);end=min(len(lines),n.end_lineno+8)
-                    if end-start<=240 and not any(a<=n.lineno and n.end_lineno<=b for a,b in ranges):ranges.append((start,end))
-                    if len(ranges)>=3:break
+                expanded=[]
+                for start,end in ranges:
+                    for n in nodes:
+                        if not any(start<=i+1<=end and n.lineno<=i+1<=n.end_lineno for i in hits):continue
+                        a=max(1,min(start,n.lineno-8));b=min(len(lines),max(end,n.end_lineno+8))
+                        if b-a<=240:start,end=a,b
+                    expanded.append((start,end))
+                ranges=list(dict.fromkeys(expanded))
             except SyntaxError:pass
-        for i in centers:
-            start=max(1,i-30);end=min(len(lines),start+60)
-            if not any(a<=i+1<=b for a,b in ranges):ranges.append((start,end))
+        self.trace.append({'stage':'source_search','path':path,'matched_lines':len(hits),'ranges':[list(r) for r in ranges],
+                           'unread_matched_lines':[i+1 for i in hits if not any(a<=i+1<=b for a,b in ranges)]})
         return [self.read_source(repo,sha,path,r) for r in ranges[:3]]

@@ -10,6 +10,13 @@ from backend.app.resume_harness import digest
 from backend.app.source_reader import SourceReader
 from backend.app.db import Session,asdict
 
+def checkpoint_code_hash():
+    root=Path(__file__).resolve().parents[1]
+    paths=[root/'backend/app'/name for name in ('resume_quality.py','resume_contract.py','resume_harness.py','resume_index.py','resume_prompts.py','resume_revision.py','source_reader.py')]
+    paths+=list((root/'backend/prompts/resume').glob('*.md'))
+    paths+=list((root/'backend/skills/resume_composition').rglob('*.md'))
+    return digest({str(path.relative_to(root)):path.read_text(encoding='utf-8') for path in sorted(paths)})
+
 class CheckpointModel:
     """Replay explicitly frozen upstream stages; only downstream calls are paid.
 
@@ -22,6 +29,8 @@ class CheckpointModel:
         self.previous_paid=(resume or {}).get('checkpoint',{}).get('total_paid_calls',(resume or {}).get('checkpoint',{}).get('paid_calls',0))
         self.limit=min(limit,8-self.previous_paid)
         self.resume_outputs={r['stage']:r['output_structure']['output'] for r in (resume or {}).get('error',{}).get('stages',[]) if r['stage'] in ('CANDIDATE_ENRICH','CANDIDATE_ENRICH_LINK_REPAIR','CLAIM_VERIFY') and r['status']=='completed'}
+        self.code_hash=checkpoint_code_hash()
+        if (resume or {}).get('checkpoint',{}).get('code_hash')!=self.code_hash:self.resume_outputs={}
         card=next(c for c in audit['candidates'] if c['candidate_id']==theme)
         self.discovery={'candidates':[dict(card)],'claims':[c for c in audit['generated_claims'] if c['id'] in card['claim_ids']]}
         hints=[]
@@ -58,7 +67,30 @@ class FixtureModel:
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--fixture',default='fixtures/resume-quality/memory.json');p.add_argument('--real',action='store_true');p.add_argument('--workspace');p.add_argument('--freeze-revision',action='store_true');p.add_argument('--output-mode',choices=['project_reference','personal_resume'],default='project_reference');p.add_argument('--output',default='data/resume-quality-eval.json');p.add_argument('--compare-legacy',action='store_true')
-    p.add_argument('--checkpoint-input');p.add_argument('--checkpoint-before');p.add_argument('--theme');p.add_argument('--paid-call-limit',type=int,choices=range(1,9),default=8);p.add_argument('--source-path',action='append',default=[]);p.add_argument('--source-question',action='append',default=[]);p.add_argument('--resume-checkpoint');args=p.parse_args()
+    p.add_argument('--checkpoint-input');p.add_argument('--checkpoint-before');p.add_argument('--theme');p.add_argument('--paid-call-limit',type=int,choices=range(1,9),default=8);p.add_argument('--source-path',action='append',default=[]);p.add_argument('--source-question',action='append',default=[]);p.add_argument('--resume-checkpoint');p.add_argument('--restart-downstream',action='store_true');p.add_argument('--prepare-only',action='store_true');p.add_argument('--benchmark');p.add_argument('--human-ratings');args=p.parse_args()
+    if args.prepare_only:
+        if not args.checkpoint_input or not args.checkpoint_before or not args.theme:
+            p.error('--prepare-only requires frozen input, before report and theme')
+        material=json.loads(Path(args.checkpoint_input).read_text(encoding='utf-8'))
+        before=json.loads(Path(args.checkpoint_before).read_text(encoding='utf-8'))['after']
+        fingerprint=digest({k:v for k,v in material.items() if not k.startswith('_')})
+        if fingerprint!=before['audit']['generation_context']['material_fingerprint']:
+            p.error('frozen input differs from recorded baseline')
+        card=next((c for c in before['audit']['candidates'] if c['candidate_id']==args.theme),None)
+        if card is None:p.error('theme is not in the baseline')
+        import hashlib
+        record={'evaluation_kind':'prepared_only_no_model_calls','material_fingerprint':fingerprint,
+                'repo':material['repo'],'commit_sha':material['commit'],'jd_version_id':material.get('jd_version_id'),
+                'theme':args.theme,'original_candidate':card,'before':before,'after':None,
+                'input_file':args.checkpoint_input,'baseline_file':args.checkpoint_before,
+                'file_sha256':{name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in (args.checkpoint_input,args.checkpoint_before)},
+                'benchmark':json.loads(Path(args.benchmark).read_text(encoding='utf-8')) if args.benchmark else None,
+                'human_review':None,'calls':0,'usage':None,
+                'limitations':'准备记录和源码人工审查，不是新模型输出；同模型重复真实运行与人工可用性验收待授权。'}
+        target=Path(args.output);target.parent.mkdir(parents=True,exist_ok=True)
+        target.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf-8')
+        print(json.dumps({'output':str(target),'kind':record['evaluation_kind'],'fingerprint':fingerprint}))
+        return
     # Optional immutable checkpoint mode shares the same production writer and contracts.
     if args.checkpoint_input:
         if not args.real or not args.checkpoint_before or not args.theme:p.error('checkpoint requires --real, --checkpoint-before and --theme; actual API authorization is required')
@@ -69,7 +101,9 @@ def main():
         if digest({k:v for k,v in material.items() if not k.startswith('_')})!=baseline['audit']['generation_context']['material_fingerprint']:p.error('checkpoint input differs from the recorded baseline')
         resume=json.loads(Path(args.resume_checkpoint).read_text(encoding='utf-8')) if args.resume_checkpoint else None
         if resume and (resume['material_fingerprint']!=baseline['audit']['generation_context']['material_fingerprint'] or resume['theme']!=args.theme or resume.get('manual_investigation_hints',{}).get('paths')!=args.source_path or resume.get('manual_investigation_hints',{}).get('questions')!=args.source_question):p.error('resume checkpoint input/theme/investigation hints changed')
-        snapshot=None;model=CheckpointModel(baseline['audit'],material,args.theme,args.paid_call_limit,args.source_path,args.source_question,resume);before_model=None;label='real_downstream_single_theme_checkpoint_unscored'
+        snapshot=None;model=CheckpointModel(baseline['audit'],material,args.theme,args.paid_call_limit,args.source_path,args.source_question,resume)
+        if args.restart_downstream:model.resume_outputs={}
+        before_model=None;label='real_downstream_single_theme_checkpoint_unscored'
     elif args.real:
         if not args.workspace:p.error('--real requires --workspace')
         with Session() as s:
@@ -101,10 +135,30 @@ def main():
         text,audit=write(snapshot,material,model);record['after']={'text':text,'audit':audit}
     except Exception as exc:
         record['error']={'type':type(exc).__name__,'code':getattr(exc,'code',None),'message':str(exc)[:1000],'trace_id':getattr(exc,'trace_id',None),'stages':getattr(exc,'stage_trace',[]),'calls':getattr(exc,'stage_calls',[])}
+        drafts=[t['output_structure']['output'] for t in record['error']['stages'] if t['stage']=='WRITE' and t['status']=='completed' and 'output' in t['output_structure']]
+        if drafts:
+            from backend.app.resume_contract import ResumeDraft,render
+            record['partial_output']={'text':render(ResumeDraft.model_validate(drafts[-1])),
+                                      'status':'needs_review','note':'流程未完成的真实中间稿，不是通过验收的最终输出'}
     finally:
         if isinstance(model,CheckpointModel):
-            record['checkpoint']={'replayed_stages':model.replayed,'paid_calls':model.paid,'total_paid_calls':model.previous_paid+model.paid,'previous_checkpoint':args.resume_checkpoint,'usage':model.usage}
+            record['checkpoint']={'replayed_stages':model.replayed,'paid_calls':model.paid,'total_paid_calls':model.previous_paid+model.paid,'previous_checkpoint':args.resume_checkpoint,'usage':model.usage,'code_hash':model.code_hash}
             model.close()
+    if args.human_ratings:
+        from backend.app.resume_revision import quality_score
+        ratings=json.loads(Path(args.human_ratings).read_text(encoding='utf-8'))
+        record['human_review']=ratings
+        record['human_content_score']=quality_score(ratings['dimensions'],independent_benchmark=bool(args.benchmark))
+        record['benchmark_file']=args.benchmark
+        # Human usability/factual verdicts are never inferred from the weighted score.
+    if record['after']:
+        audit=record['after']['audit']
+        record['runtime']={'calls':len(audit['harness']['calls']),
+            'reported_usage':[r['usage'] for r in audit['harness']['calls'] if r.get('usage')],
+            'usage_complete':all(r.get('usage') is not None for r in audit['harness']['calls']),
+            'elapsed_seconds':sum(r.get('elapsed_seconds',0) for r in audit['harness']['calls'])}
+        record['fact_gate']=audit.get('fact_gate')
+        record['model_content_score']=audit.get('content_score')
     target.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf-8')
     if record['after']:
         after=record['after']['audit'];before=record['before']

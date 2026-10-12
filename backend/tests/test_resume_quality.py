@@ -27,11 +27,12 @@ class Stub:
         elif stage=='PRODUCT':d={'audience':'创作者','background':'角色记忆','value_summary':'保存角色经历'}
         elif stage=='JD_PLAN':d={'requirements':[{'requirement_id':'r1','description':'多轮记忆','origin':'role_inferred' if '"jd": ""' in p else 'jd','question':'如何延续角色状态？','search_terms':['memory','记忆']}]}
         elif stage=='DISCOVER':d={'claims':[claim(),claim('c2')],'candidates':[candidate(),candidate('n2','c2')]}
+        elif stage=='CANDIDATE_ENRICH':d=json.loads(p.split('\nJSON schema:')[0].split('\n')[-1])['previous']
         elif stage.startswith('CLAIM_VERIFY'):d={'claims':[claim(support='insufficient' if self.invalid else 'supported'),claim('c2',support='supported')]}
         elif stage in ('SELECT','RESELECT'):
             cid='n2' if stage=='RESELECT' or self.invalid else 'n1';cl='c2' if cid=='n2' else 'c1'
             d={'selected_ids':[cid],'reasons':{cid:'有版本机制证据'},'omitted':{'n1' if cid=='n2' else 'n2':'避免重复'},'coverage':[{'requirement_id':'r1','status':'direct','claim_ids':[cl],'candidate_ids':[cid]}]}
-        elif stage in ('WRITE','DRAFT_HR','DRAFT_TECHNICAL'):
+        elif stage=='WRITE':
             self.round+=int(stage=='WRITE');cid='n2' if self.round>1 or self.invalid else 'n1';cl='c2' if cid=='n2' else 'c1'
             mode='personal_resume' if '"output_mode": "personal_resume"' in p else 'project_reference'
             d={'output_mode':mode,'project_intro':prose(cl),'bullets':[] if mode=='personal_resume' else [{'id':'b1','title':'版本化记忆','candidate_ids':[cid],**prose(cl)}],'questions':['你实际修改了哪些记忆模块？'] if mode=='personal_resume' else []}
@@ -73,7 +74,11 @@ def test_structure_retrieval_preserves_neighbors_and_diversity():
     q=Requirement(requirement_id='r',description='记忆',origin='jd',question='机制？',search_terms=['memory'])
     material={'_full_wiki_pages':[{'title':'Memory','content':'# Memory\n\n前置权限条件\n\nmemory版本检查\n\n失败时拒绝'},{'title':'Other','content':'memory调用入口与回传结果'}]}
     rows=retrieve(material,[q],budget=1000)[0]['candidate_evidence']
-    assert any('前置权限' in r['content'] and '拒绝' in r['content'] for r in rows)
+    source=''.join(r['content'] for r in sorted(rows,key=lambda r:r['start']) if r['page_ref']=='wiki:0')
+    assert '前置权限' in source and '拒绝' in source
+    for row in rows:
+        page=material['_full_wiki_pages'][int(row['page_ref'].split(':')[1])]
+        assert row['content']==page['content'][row['start']:row['end']]
     assert {r['page_ref'] for r in rows}=={'wiki:0','wiki:1'}
     assert sum(len(r['content']) for r in rows)<=1000
 

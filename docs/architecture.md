@@ -93,13 +93,11 @@ resume_contract保存可选机制事实/候选/审查分类契约；resume_quali
 单主题真实回归复用scripts/eval-resume-quality.py的检查点模式，通过相同生产write入口运行后续阶段；前置模型结果明确标replayed，不能冒充新版全量发现质量。冻结输入指纹/提交/JD/模式必须与原样例一致，恢复检查点还检查主题与人工检索线索，累计付费最多8次并禁止同时跑旧基线。fixtures/resume-quality/boundary-review.json保存固定版本人工机制核对标准，不是自动自评或stub质量评分。
 
 
-本轮写作流程（resume-quality-v3）：复用已核验选中卡片，HR与TECHNICAL分别独立拟稿（DRAFT_HR/DRAFT_TECHNICAL），通过本地事实契约的草稿才进入WRITE去重合并；合并稿独立双审，有反馈最多再WRITE修订一次并双审。两份初稿及契约问题保留audit.perspective_drafts。普通无修复写作阶段5请求，需要一次修订为8请求（两次独立拟稿、两次合并/修订、两轮双审），仍受原总预算约束。编号只能引用现有证据，关联失败最多修复一次，不能推测映射或关闭校验。
 
 
-2026-10-11流程更新（替代上文两轮模型双审）：HR/技术独立初稿→合并→一轮独立双审→有意见最多一次最终修订，只做本地契约校验，不声称最终稿经过二次模型评审（audit.final_model_reviewed）。意见按expression/fact_attribution/mechanism_missing/candidate_omission/needs_evidence分类，事实和机制问题仍先局部核验，用户证据缺口不因重写消失。全生成流程最多一次契约修复请求；路径预算本地去重选取并记录遗漏。零合格候选/零可写事实停止，不发拟稿评审请求。
 
 
-当前v4材料边界：复用PRODUCT→DISCOVER→候选补证→核验→SELECT→独立拟稿/合并/评审。发现从整个用户闭环出发再关联JD。SELECT只收合格候选及支持事实，按project_reference/personal_resume传递明确政策。project_spine复用已核验上游事实，不投递未经核验产品摘要；允许简介引用完整项目事实，亮点/成果仍限定所选主题。该边界由check_draft和回归测试保护。语义选题正确性、机制完整性仍需真实固定仓库评测，不以离线测试宣称跨仓库质量通过。
+当前材料边界：复用PRODUCT→DISCOVER→候选补证→核验→SELECT→统一写作/独立评审（角色职责详见下方v5）。发现从整个用户闭环出发再关联JD。SELECT只收合格候选及支持事实，按project_reference/personal_resume传递明确政策。project_spine复用已核验上游事实，不投递未经核验产品摘要；允许简介引用完整项目事实，亮点/成果仍限定所选主题。该边界由check_draft和回归测试保护。语义选题正确性、机制完整性仍需真实固定仓库评测，不以离线测试宣称跨仓库质量通过。
 
 MAPPING_INVENTORY为现有全块映射的本地逐页索引：记录事实数/机制/无映射状态，传入DISCOVER并保存审计；不是新增模型阶段，也不将页覆盖视作语义准确。
 
@@ -162,3 +160,19 @@ Alembic 001→002 为纯增量建表/部分唯一索引，不重写事实/旧正
 原始Wiki、阶段输出、源码路径、评选/双审细节仅在过程页显示；用户仍看见原项目归属、未验证指标、输入变化及人工修改提示。需要技术排错使用右上“过程后台”；后台有“返回用户界面”。当前项目沿用原localStorage选择，无有效选择时取后端最新项目；没有项目时入口仍可见并说明创建步骤。
 
 交互回归位于原Playwright入口；旧高级流程测试改从后台进入，业务断言保留。新增回归保证切换页面不丢编辑、空项目入口可见和窄屏导航可用。
+
+
+## 角色职责与材料链 v5（2026-10-12）
+
+主调用链不变：artifact_service → resume_writer.write → resume_quality.generate → resume_contract.render。交互编辑/版本接收仍走interaction_service，不复制生成入口。
+
+- resume_index：无模型的原文范围索引、词面召回与已读/未读预算账本；复用SourceEvidence。每个来源ID绑定唯一原文范围，邻居各自保留ID。
+- resume_prompts：四种TaskSpec白名单、独立上下文投影、固定版本模板和哈希；不能从用户材料加载路径或工具。模板缺失预检失败。resume_composition Skill只供WRITE，不负担角色路由。
+- resume_revision：确定性候选演进历史、事实门禁与评分计算；无模型/数据库依赖。内容评分是辅助观察，不能代替事实门禁和人工复核。
+- resume_quality仍编排原阶段；移除DRAFT_HR/DRAFT_TECHNICAL两次调用，SELECT为HR选材，CANDIDATE_ENRICH/增量发现为技术调查，WRITE统一写作，REVIEW_HR/TECHNICAL独立评审。
+- SourceReader.search_ranges在固定SHA缓存内按问题词和控制流窗口取最多3段；记录未读命中，不执行代码、不宣称完整调用图。Python AST仍仅作本地静态定位。
+- Harness阶段缓存使用完整prompt/schema、模型端点/模型名、输出预算配置、workspace/snapshot/SHA及契约版本。仅完整成功流程写入新缓存；角色实际输入不同，JD/证据/模板变化自然失效。缓存命中依旧执行取消检查及调用方契约检查，实际调用usage未知保持null。
+
+历史write_legacy仍被显式评测入口引用，保留用途和原删除条件；历史双稿审计无需迁移，新生产不再生成双稿。没有新依赖、迁移或Agent框架。
+
+评测准备（无模型）：`.venv/Scripts/python scripts/eval-resume-quality.py --prepare-only --checkpoint-input data/resume-mechanism-regression/input.json --checkpoint-before data/resume-mechanism-regression/before.json --theme cand_memory_version --benchmark fixtures/resume-quality/memory-review.json --output data/resume-role-regression/prepared-memory.json`。这些本地冻结文件不入Git；缺文件不能声称复现。真实验证另加--real和有界授权；--resume-checkpoint累计计费请求，--restart-downstream仅清旧响应，不重置累计额度。

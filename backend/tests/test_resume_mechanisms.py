@@ -123,7 +123,7 @@ def test_actual_artifact_api_keeps_selected_fact_packet_and_idempotent_output(cl
     first=client.post(f'/api/workspaces/{wid}/artifacts',json=body)
     assert first.status_code==200,first.text
     audit=next(c for c in first.json()['claims'] if c['kind']=='writing_review')
-    assert audit['schema_version']=='resume-quality-v4'
+    assert audit['schema_version']=='resume-quality-v5'
     assert audit['structured_draft']['bullets'][0]['claim_ids']==['c1']
     count=len(stub.calls)
     second=client.post(f'/api/workspaces/{wid}/artifacts',json=body)
@@ -203,19 +203,21 @@ def test_combined_feedback_does_not_select_twice_before_rewrite():
     assert stages.count('PRODUCT')==1 and audit['status']=='passed'
 
 
-def test_independent_perspective_drafts_feed_merge_and_review():
+def test_single_writer_uses_selected_facts_and_distinct_reviews():
     stub=Stub()
     _,audit=write(None,MATERIAL,chat=stub)
     stages=[stage for stage,_ in stub.calls]
-    assert stages.index('DRAFT_HR')<stages.index('DRAFT_TECHNICAL')<stages.index('WRITE')<stages.index('REVIEW_HR')
-    import json
-    merge=next(p for stage,p in stub.calls if stage=='WRITE')
-    assert 'perspective_drafts' in merge
-    assert len(audit['perspective_drafts'])==2
-    for stage,prompt in stub.calls:
-        if stage in ('DRAFT_HR','DRAFT_TECHNICAL'):
-            assert 'perspective_drafts' not in prompt
-    assert stages.count('DRAFT_HR')==stages.count('DRAFT_TECHNICAL')==1
+    assert stages.index('SELECT')<stages.index('WRITE')<stages.index('REVIEW_HR')
+    assert not any(s.startswith('DRAFT_') for s in stages)
+    assert stages.count('WRITE')==1
+    assert audit['writing_strategy']=='single_writer_distinct_reviews'
+    prompts={stage:p for stage,p in stub.calls}
+    assert 'perspective_drafts' not in prompts['WRITE']
+    assert '你仅从 HR 阅读角度' in prompts['REVIEW_HR']
+    assert '你仅从技术面试官角度' in prompts['REVIEW_TECHNICAL']
+    assert '"evidence":' not in prompts['REVIEW_HR']
+    assert '"evidence":' in prompts['REVIEW_TECHNICAL']
+    assert {t['output_structure']['task'] for t in audit['trace'] if t['status']=='prompt_ready'}=={'hr_selection','hr_review','technical_review'}
 
 
 def test_repair_drops_unlinked_annotations_without_guessing_fact_links():

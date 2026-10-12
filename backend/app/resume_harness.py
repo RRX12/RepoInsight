@@ -65,6 +65,26 @@ class Harness:
         self.records = []
         self.trace_id = os.urandom(12).hex()
 
+    def stage_cache_key(self, prompt, scope):
+        return digest({'version':'role-stage-v1','scope':scope,'model':self.model,'prompt':prompt,
+                       'discovery_output_limit':os.getenv('RESUME_DISCOVERY_MAX_TOKENS','12000')})
+
+    def read_stage(self, key, schema):
+        if self.check_active:self.check_active()
+        if not self.cache_dir:return None
+        path=self.cache_dir/'stages'/(key+'.json')
+        try:return schema.model_validate_json(path.read_text(encoding='utf-8'))
+        except (ValueError,OSError):return None
+
+    def save_stages(self, entries):
+        """Commit only after the entire pipeline completed its contract checks."""
+        if not self.cache_dir:return
+        if self.check_active:self.check_active()
+        for key,result in entries.items():
+            path=self.cache_dir/'stages'/(key+'.json');path.parent.mkdir(parents=True,exist_ok=True)
+            temp=path.with_suffix('.'+os.urandom(4).hex()+'.tmp')
+            temp.write_text(result.model_dump_json(),encoding='utf-8');temp.replace(path)
+
     def call(self, prompt, *, stage=None):
         if self.check_active:self.check_active()
         stage=stage or prompt.split('\n',1)[0]
@@ -90,6 +110,8 @@ class Harness:
         finally:
             current_usage = getattr(self.chat, 'usage', [])
             self.records.append({'stage': stage,
+                                 'model_config':self.model,
+                                 'prompt_hash':digest(prompt),
                                  'input_bytes': len(prompt.encode('utf-8')),
                                  'input_token_upper_estimate': len(prompt.encode('utf-8')),
                                  'status': outcome,

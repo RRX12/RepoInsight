@@ -13,7 +13,8 @@ def test_skill_is_passed_and_loop_repairs_unsupported_metrics():
     draft,audit=write(None,MATERIAL,chat)
     assert draft==GOOD and audit['iterations']==2 and audit['status']=='passed'
     assert '没有该指标' in str(audit['reviews'][0])
-    assert 'STAR是内在逻辑' in calls[1] and '模型执行流程' in calls[1]
+    from backend.app.resume_support import ROOT
+    assert 'STAR是内在逻辑' in calls[1] and (ROOT/'SKILL.md').read_text(encoding='utf-8') in calls[1]
     assert 'STAR是内在逻辑' not in calls[2]
     assert '90%' in calls[4] and '必须修复' in calls[4]
     assert calls[0].startswith('SELECT') and [h['title'] for h in audit['selection']['selected']]==[h['title'] for h in SELECTED['selected']]

@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .source_reader import SourceEvidence
 
-VERSION='resume-quality-v4'
+VERSION='resume-quality-v5'
 class Strict(BaseModel):model_config=ConfigDict(extra='forbid')
 class GenerationContext(Strict):
     workspace_id: str
@@ -58,7 +58,7 @@ class Candidate(Strict):
     problem: str=''
     mechanism: str=''
     tradeoff: str=''
-    claim_ids: list[str]=Field(min_length=1,max_length=8)
+    claim_ids: list[str]=Field(min_length=1,max_length=32)
     requirement_ids: list[str]=Field(default_factory=list,max_length=6)
     personal_contribution: str=''
     result_refs: list[str]=Field(default_factory=list)
@@ -72,6 +72,7 @@ class Candidate(Strict):
     source_paths: list[str]=Field(default_factory=list,max_length=4)
     contribution_claim_ids: list[str]=Field(default_factory=list,max_length=8)
     result_claim_ids: list[str]=Field(default_factory=list,max_length=8)
+    supersedes_candidate_ids: list[str]=Field(default_factory=list,max_length=4)
 class Discovery(Strict):
     project_intro: str=''
     claims: list[Claim]=Field(max_length=32)
@@ -143,9 +144,20 @@ class Feedback(Strict):
     paths: list[str]=Field(default_factory=list,max_length=4)
     part_ids: list[str]=Field(default_factory=list,max_length=6)
     blocking: bool=False
+    evidence_ids: list[str]=Field(default_factory=list,max_length=8)
+    jd_requirement_ids: list[str]=Field(default_factory=list,max_length=6)
+    suggested_action: str=''
+    priority: Literal['high','medium','low']='medium'
+    interview_question: str=''
+class Rating(Strict):
+    score: float=Field(ge=0,le=4)
+    reason: str=Field(min_length=1,max_length=600)
+    part_ids: list[str]=Field(default_factory=list,max_length=6)
+    suggested_action: str=''
 class QualityReview(Strict):
     approved: bool
     feedback: list[Feedback]=Field(default_factory=list,max_length=8)
+    scores: dict[Literal['role_fit','engineering_depth','important_coverage','project_spine','readability'],Rating]=Field(default_factory=dict)
 
 def check_claims(claims,evidence,context,contributions):
     ids=[c.id for c in claims]
