@@ -6,7 +6,7 @@
 
 本次完整隔离检查：138后端、11浏览器、架构A01/A02、类型及隔离构建全部通过（data/repoinsight-check.txt）。无付费模型/向量预算提高；Mermaid既有大包提示保持。源码发布不包含.env、运行数据、依赖、构建产物或exports。源码基线提交2c0ff75；RRX12/RepoInsight公开仓库已创建，新目录原项目ID核对一致，repoinsight.db已加载，原目录仅保留源码备份。后端/DeepWiki均从新目录运行，页面与OpenAPI标题RepoInsight，HTTP200。
 
-迁移验证补充：依赖重新绑定新路径；新建工作区与岗位JD保存使用function作用域事务，在响应前提交，解决紧接保存仓库时偶发404。新/旧配置优先级与数据库文件兼容回归补齐，后端最终142项通过；修复后11浏览器全通过。新配置的检查/fixture显式使用REPOINSIGHT隔离目录，不受本地.env新命名影响。最后隔离总检查记录data/repoinsight-final-isolated-check.txt，源码已准备提交发布，远端结果以最终Git核对为准。
+迁移验证补充：依赖重新绑定新路径；新建工作区与岗位JD保存使用function作用域事务，在响应前提交，解决紧接保存仓库时偶发404。新/旧配置优先级与数据库文件兼容回归补齐，后端最终142项通过；修复后11浏览器全通过。新配置的检查/fixture显式使用REPOINSIGHT隔离目录，不受本地.env新命名影响。最后隔离总检查记录data/repoinsight-final-isolated-check.txt，最终总检查在新目录通过：142后端（15.91秒）、11浏览器（42.6秒）、架构、类型和隔离构建。源码44ae0b6已成功推送到公开RRX12/RepoInsight的main，默认分支main；原RepoCareer远端未推送/未改权限。当前本地codex/repoinsight跟踪origin/main，legacy远端仅留历史出处。新目录Git登录helper绑定已迁移gh.exe，旧路径留工具副本兼容原有全局配置，不修改全局Git设置。发布交接另提交，仅文档变化，最终主分支HEAD以Git核对为准。
 
 以下为实施阶段历史，不代表最新发布状态。
 
