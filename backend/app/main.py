@@ -14,14 +14,14 @@ from .schemas import *
 from .memory import *
 from .providers import GitHub, ModelProvider, ProviderError, demo_fixture, repo_name
 from .analysis import recover_runs, submit, still_executing
-from .agent import chat, SKILLS, load_skill
+from .agent import SKILLS, load_skill
 from .artifact_service import create_artifact
 from .task_lifecycle import inline_active
 from .repository_upload import import_zip, MAX_ARCHIVE
 
 @asynccontextmanager
 async def lifespan(app):
-    migrate(); recover_runs(); yield
+    migrate(); recover_runs(); discussion_store.recover(); yield
 app = FastAPI(title='RepoCareer', lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=['http://127.0.0.1:5173','http://localhost:5173'], allow_methods=['*'], allow_headers=['*'])
 def session():
@@ -81,6 +81,9 @@ def save_repository_link(wid:str,body:RepositoryLinkInput,s=Depends(session)):
     reader=SourceReader(wid)
     try:revision=reader.resolve_revision(owner+'/'+repo)
     finally:reader.close()
+    from .source_reader import resolved
+    if not resolved(revision.get('commit_sha')):
+        raise HTTPException(422,'无法解析 GitHub 仓库版本，未保存或替换现有仓库。'+revision.get('error','请检查访问权限')+'；恢复访问后请重新保存仓库链接。')
     if previous and previous[-1].metadata_json.get('github_url')==url and previous[-1].commit_sha==revision['commit_sha']:return asdict(previous[-1])
     snap=Snapshot(workspace_id=wid,owner=owner,repo=repo,commit_sha=revision['commit_sha'],
         metadata_json={'mode':'github','source_kind':'github_link','github_url':url,'revision':revision,'description':'GitHub链接；Wiki版本与独立源码证据分别核对'},
@@ -220,16 +223,8 @@ def export(aid:str,workspace_id:str,s=Depends(session)):
         elif audit.get('generation_context',{}).get('output_mode')=='project_reference':text='> 项目能力参考稿，上游能力不代表个人贡献；源码与Wiki核验范围请查看审查记录。\n\n'+text
     return Response(text,media_type='text/markdown',headers={'Content-Disposition':f'attachment; filename="{a.type}-v{a.version}.md"'})
 @app.post('/api/workspaces/{wid}/messages')
-def message(wid:str,body:TextInput,s=Depends(session)):
-    require(s,Workspace,wid)
-    m=Message(workspace_id=wid,role='user',content=body.content); s.add(m); s.commit()
-    state=chat(wid,body.content,m.id); output=state['output']
-    # Only validated candidate fields are shown. No LLM write privileges.
-    proposal=output.get('proposal',{})
-    if proposal:
-        try: proposal=ContributionInput.model_validate(proposal).model_dump()
-        except Exception: proposal={'needs_clarification':True,'note':'模型候选缺字段或状态无效，请手工确认后录入'}
-    reply=Message(workspace_id=wid,role='assistant',content=output['reply'],proposal={'candidate':proposal,'mode':output['mode'],'usage':output.get('usage'),'tool_steps':state['tool_steps']}); s.add(reply); s.flush(); return asdict(reply)
+def message(wid:str,body:TextInput):
+    raise HTTPException(410,'旧聊天入口已停用，请使用 conversations 会话接口；显式贡献表单保留')
 @app.get('/api/workspaces/{wid}/messages')
 def messages(wid:str,s=Depends(session)):
     require(s,Workspace,wid); return [asdict(m) for m in scoped(s,Message,wid)]
@@ -241,7 +236,8 @@ def interaction_state(wid:str,s=Depends(session)):return interaction.state(s,wid
 @app.post('/api/workspaces/{wid}/interaction/mutations')
 def interaction_mutation(wid:str,body:Mutation,s=Depends(session,scope='function')):return interaction.mutation(s,wid,body)
 @app.post('/api/workspaces/{wid}/interaction/chat')
-def interaction_chat(wid:str,body:DiscussionInput,s=Depends(session)):return interaction.discuss(s,wid,body)
+def interaction_chat(wid:str,body:DiscussionInput):
+    raise HTTPException(410,'聊天不再执行业务写入，请使用 conversations 讨论接口；业务修改请使用独立表单')
 @app.post('/api/workspaces/{wid}/interaction/editor')
 def interaction_edit(wid:str,body:EditInput,s=Depends(session)):return interaction.save_text(s,wid,body)
 @app.post('/api/workspaces/{wid}/interaction/review')
@@ -252,9 +248,32 @@ def interaction_generate(wid:str,body:GenerateInput,s=Depends(session)):return i
 def interaction_decision(wid:str,body:DecisionInput,s=Depends(session)):return interaction.decide(s,wid,body)
 from . import wiki_chat
 @app.post('/api/workspaces/{wid}/wiki-chat')
-def wiki_question(wid:str,body:wiki_chat.WikiQuestion,s=Depends(session,scope='function')):
-    base,payload=wiki_chat.prepare(s,wid,body)
-    return StreamingResponse(wiki_chat.stream(base,payload),media_type='application/x-ndjson',headers={'Cache-Control':'no-store','X-Accel-Buffering':'no'})
+def wiki_question(wid:str,body:wiki_chat.WikiQuestion):
+    raise HTTPException(410,'请刷新前端，使用 conversations 接口；客户端 history 不再作为历史记录')
+
+from . import discussion_memory as discussion_store
+from .discussion_contract import OpenConversation, Question, MemoryChange, CancelTurn
+from .discussion_service import answer_stream
+@app.post('/api/workspaces/{wid}/conversations')
+def conversation_open(wid:str,body:OpenConversation):return discussion_store.open_conversation(wid,body.surface)
+@app.get('/api/workspaces/{wid}/conversations/{cid}')
+def conversation_read(wid:str,cid:str,offset:int=0,limit:int=50):
+    if offset<0 or limit<1 or limit>100:raise HTTPException(422,'分页范围无效')
+    return discussion_store.view(wid,cid,offset,limit)
+@app.post('/api/workspaces/{wid}/conversations/{cid}/turns')
+def conversation_send(wid:str,cid:str,body:Question):
+    ticket=discussion_store.begin(wid,cid,body)
+    return StreamingResponse(answer_stream(wid,cid,body,ticket),media_type='application/x-ndjson',headers={'Cache-Control':'no-store','X-Accel-Buffering':'no'})
+@app.post('/api/workspaces/{wid}/conversations/{cid}/cancel')
+def conversation_cancel(wid:str,cid:str,body:CancelTurn):return discussion_store.cancel(wid,cid,body.request_id)
+@app.post('/api/workspaces/{wid}/conversations/{cid}/memory')
+def conversation_memory(wid:str,cid:str,body:MemoryChange):return discussion_store.change_memory(wid,cid,body)
+@app.delete('/api/workspaces/{wid}/conversations/{cid}')
+def conversation_delete(wid:str,cid:str):
+    discussion_store.delete_conversation(wid,cid);return {'deleted':True}
+@app.delete('/api/workspaces/{wid}/discussion-memory')
+def discussion_purge(wid:str):
+    discussion_store.purge(wid);return {'deleted':True}
 
 DIST=Path(__file__).resolve().parents[2]/'frontend'/'dist'
 if DIST.exists(): app.mount('/',StaticFiles(directory=DIST,html=True),name='web')

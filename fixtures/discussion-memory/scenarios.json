@@ -1,0 +1,1829 @@
+{
+  "kind": "synthetic_context_cases_not_model_answers",
+  "cases": [
+    {
+      "id": "M01-cache",
+      "category": "M01",
+      "operation": "refresh",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M01-recovery",
+      "category": "M01",
+      "operation": "refresh",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M02-cache",
+      "category": "M02",
+      "operation": "long_history",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问12",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M02-recovery",
+      "category": "M02",
+      "operation": "long_history",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问12",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M03-cache",
+      "category": "M03",
+      "operation": "long_turn",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M03-recovery",
+      "category": "M03",
+      "operation": "long_turn",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M04-cache",
+      "category": "M04",
+      "operation": "pronoun",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M04-recovery",
+      "category": "M04",
+      "operation": "pronoun",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M05-cache",
+      "category": "M05",
+      "operation": "switch",
+      "topic": "缓存方案",
+      "current_question": "这个怎么处理",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "其他方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M05-recovery",
+      "category": "M05",
+      "operation": "switch",
+      "topic": "任务恢复",
+      "current_question": "这个怎么处理",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "其他方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M06-cache",
+      "category": "M06",
+      "operation": "return",
+      "topic": "缓存方案",
+      "current_question": "回到“缓存方案”的取舍",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问12",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": "仅考虑本地部署",
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M06-recovery",
+      "category": "M06",
+      "operation": "return",
+      "topic": "任务恢复",
+      "current_question": "回到“任务恢复”的取舍",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问12",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": "仅考虑本地部署",
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M07-cache",
+      "category": "M07",
+      "operation": "repeat",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M07-recovery",
+      "category": "M07",
+      "operation": "repeat",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M08-cache",
+      "category": "M08",
+      "operation": "correct",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M08-recovery",
+      "category": "M08",
+      "operation": "correct",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M09-cache",
+      "category": "M09",
+      "operation": "scopes",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M09-recovery",
+      "category": "M09",
+      "operation": "scopes",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M10-cache",
+      "category": "M10",
+      "operation": "proposal",
+      "topic": "缓存方案",
+      "current_question": "“缓存方案”现在实现了吗",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M10-recovery",
+      "category": "M10",
+      "operation": "proposal",
+      "topic": "任务恢复",
+      "current_question": "“任务恢复”现在实现了吗",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M11-cache",
+      "category": "M11",
+      "operation": "revision",
+      "topic": "缓存方案",
+      "current_question": "“缓存方案”现在实现了吗",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [
+        "fixture:source"
+      ],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M11-recovery",
+      "category": "M11",
+      "operation": "revision",
+      "topic": "任务恢复",
+      "current_question": "“任务恢复”现在实现了吗",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [
+        "fixture:source"
+      ],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M12-cache",
+      "category": "M12",
+      "operation": "isolation",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M12-recovery",
+      "category": "M12",
+      "operation": "isolation",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M13-cache",
+      "category": "M13",
+      "operation": "idempotency",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M13-recovery",
+      "category": "M13",
+      "operation": "idempotency",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M14-cache",
+      "category": "M14",
+      "operation": "concurrent",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": true
+    },
+    {
+      "id": "M14-recovery",
+      "category": "M14",
+      "operation": "concurrent",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": true
+    },
+    {
+      "id": "M15-cache",
+      "category": "M15",
+      "operation": "delete",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": true
+    },
+    {
+      "id": "M15-recovery",
+      "category": "M15",
+      "operation": "delete",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": true
+    },
+    {
+      "id": "M16-cache",
+      "category": "M16",
+      "operation": "invalid_source",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M16-recovery",
+      "category": "M16",
+      "operation": "invalid_source",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M17-cache",
+      "category": "M17",
+      "operation": "business",
+      "topic": "缓存方案",
+      "current_question": "请生成简历",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": true,
+      "expected_rejection": false
+    },
+    {
+      "id": "M17-recovery",
+      "category": "M17",
+      "operation": "business",
+      "topic": "任务恢复",
+      "current_question": "请生成简历",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": true,
+      "expected_rejection": false
+    },
+    {
+      "id": "M18-cache",
+      "category": "M18",
+      "operation": "missing",
+      "topic": "缓存方案",
+      "current_question": "回到“从未讨论的主题”的原话",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "从未讨论的主题",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": true,
+      "expected_rejection": false
+    },
+    {
+      "id": "M18-recovery",
+      "category": "M18",
+      "operation": "missing",
+      "topic": "任务恢复",
+      "current_question": "回到“从未讨论的主题”的原话",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "从未讨论的主题",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": true,
+      "expected_rejection": false
+    },
+    {
+      "id": "M19-cache",
+      "category": "M19",
+      "operation": "failed",
+      "topic": "缓存方案",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M19-recovery",
+      "category": "M19",
+      "operation": "failed",
+      "topic": "任务恢复",
+      "current_question": "那失败以后呢",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": null,
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M20-cache",
+      "category": "M20",
+      "operation": "chinese",
+      "topic": "缓存方案",
+      "current_question": "回到“缓存方案”的原话",
+      "turns": [
+        {
+          "question": "讨论“缓存方案”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        },
+        {
+          "question": "一般追问12",
+          "answer": "继续讨论，未声称实现",
+          "topic": "缓存方案"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "缓存方案",
+      "required_history": "仅考虑本地部署",
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    },
+    {
+      "id": "M20-recovery",
+      "category": "M20",
+      "operation": "chinese",
+      "topic": "任务恢复",
+      "current_question": "回到“任务恢复”的原话",
+      "turns": [
+        {
+          "question": "讨论“任务恢复”",
+          "answer": "方案仍待核查；仅考虑本地部署，失败路径尚未核实",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问1",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问2",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问3",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问4",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问5",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问6",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问7",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问8",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问9",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问10",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问11",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        },
+        {
+          "question": "一般追问12",
+          "answer": "继续讨论，未声称实现",
+          "topic": "任务恢复"
+        }
+      ],
+      "constraint": "仅考虑本地部署",
+      "corrected_constraint": "可考虑云端部署",
+      "expected_object": "任务恢复",
+      "required_history": "仅考虑本地部署",
+      "required_evidence": [],
+      "forbidden_assertions": [
+        "已采用",
+        "已实现",
+        "测试已通过"
+      ],
+      "clarification_required": false,
+      "expected_rejection": false
+    }
+  ]
+}

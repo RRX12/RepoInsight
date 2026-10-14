@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from .providers import ProviderError
 from .resume_harness import digest
-from .resume_contract import Choice, Discovery, QualityReview
+from .resume_contract import Choice, Discovery, QualityReview, Analysis
 
 PROMPT_ROOT = Path(__file__).resolve().parents[1] / 'prompts' / 'resume'
 
@@ -18,14 +18,14 @@ class TaskSpec:
 
 TASKS = {
     'hr_selection': TaskSpec('hr_selection', Choice, ('eligible_ids','project_spine','candidates','claims','requirements','output_mode','selection_policy'), version='resume-hr-selection-v2'),
-    'technical_investigation': TaskSpec('technical_investigation', Discovery, ('previous','sources','requirements','feedback','facts'), version='resume-technical-investigation-v2'),
+    'technical_investigation': TaskSpec('technical_investigation', Analysis, ('previous','sources','requirements','feedback','facts','product','paths','coverage','remaining_gaps','project_corrections'), version='resume-technical-investigation-v2'),
     'hr_review': TaskSpec('hr_review', QualityReview, ('draft','candidates','choice','requirements','claim_limits','claims')),
     'technical_review': TaskSpec('technical_review', QualityReview, ('draft','claims','claim_limits','candidates','requirements','evidence')),
 }
 
 def task_for_stage(stage):
     return {'SELECT':'hr_selection','RESELECT':'hr_selection','RESELECT_FACT':'hr_selection',
-            'CANDIDATE_ENRICH':'technical_investigation','DISCOVER_INCREMENTAL':'technical_investigation',
+            'INVESTIGATE':'technical_investigation','SYNTHESIZE':'technical_investigation',
             'REVIEW_HR':'hr_review','REVIEW_TECHNICAL':'technical_review'}.get(stage)
 
 def validate_configuration():

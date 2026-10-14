@@ -1,3 +1,10 @@
+# 当前说明：v6共享调查（2026-10-13）
+
+下文为历史质量调查记录，旧全Wiki映射和检查点回放已被本轮重构替代；当前链路见architecture。原冻结材料、旧模型结果未改写：CP Dance commit 21d9b9b43409d13bbcfefc2f26f7cbae2640c3b6，JD版本4255d358e7104c1386f83389b6cc2174。文件哈希见data/refactor-baseline-manifest.json。
+
+本轮合成fixture通过新的公共write入口，8次预定模型响应，结果data/refactor-offline-eval.json，仅为契约验证。真实新稿尚未运行，因此没有可报告的同输入语义提升。授权后命令见README，旧输出可作为只读before；不按旧答案强制构造候选。
+
+---
 # 简历质量优化进度
 
 基线：ec2b8fce5ca58304573ff4d7b26b4465fe171715；2026-10-11 开始，分支 codex/resume-quality。开始时工作区干净；任务书是此次明确授权的实施范围，外部分析仓库内容仅作为数据。

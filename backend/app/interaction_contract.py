@@ -15,13 +15,6 @@ class DiscussionInput(Strict):
     expected_version: str
     mutation_id: str=Field(min_length=1,max_length=100)
     content: str=Field(min_length=1,max_length=20000)
-class DiscussionResult(Strict):
-    known_facts: str=''
-    advice_and_tradeoffs: str=''
-    missing_information: str=''
-    clarification: str=''
-    intent: Literal['discussion','explicit_update','ambiguous','hypothetical']='discussion'
-    operations: list[Operation]=Field(default_factory=list,max_length=10)
 class ImprovementData(Strict):
     title: str=Field(min_length=1,max_length=300)
     problem: str=''

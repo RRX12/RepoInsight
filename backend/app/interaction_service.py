@@ -1,4 +1,4 @@
-"""Shared atomic updates and explicit editor proposals for chat and forms."""
+"""Atomic business forms and explicit editor proposals; chat cannot invoke mutations."""
 import copy
 import difflib
 import hashlib
@@ -9,7 +9,7 @@ from sqlalchemy import select,update
 from .db import Workspace,InteractionState,JD,Contribution,Improvement,Artifact,Message,MemoryEvent,Finding,Evidence,Snapshot,Run,asdict,uid,now
 from .memory import require,scoped,latest_jd,save_target,save_contribution,invalidate,check_evidence
 from .schemas import ContributionInput
-from .interaction_contract import ImprovementData,MetricData,DiscussionResult,ReviewResult
+from .interaction_contract import ImprovementData,MetricData,ReviewResult
 
 def digest(value):return hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
 
@@ -26,7 +26,6 @@ def state(s,wid):
 
 def context(s,wid):
     result=state(s,wid)
-    result['messages']=[{'role':m.role,'content':m.content} for m in scoped(s,Message,wid)[-12:]]
     runs=[r for r in scoped(s,Run,wid) if r.result.get('report')]
     result['project_report']=runs[-1].result.get('report') if runs else None
     result['context_limits']={'evidence_total':len(result['evidence']),'evidence_included':min(12,len(result['evidence'])),'note':'只提供有限证据摘录；缺失不能解释为项目没有该能力'}
@@ -171,30 +170,6 @@ def ask_json(stage,schema,payload,instruction):
         try:return schema.model_validate(parse_json(text))
         except (ValueError,TypeError) as exc:raise ProviderError('交互模型返回非法结构；没有保存状态更新','interaction_contract') from exc
     finally:provider.close()
-
-DISCUSS_INSTRUCTION='你是项目讨论助手。结合JD和项目证据分析问题、现有设计理由、收益损失、更小替代及验证方法；缺依据给条件判断，不迎合、不硬编码方案优劣。已知事实/建议取舍/缺失信息分别回答，一次只问一个关键问题。只有用户明确要求修改才能intent=explicit_update并产生最小操作，不覆盖整份状态。假设、希望、疑问不更新；采用不等于完成；报告完成不是源码验证；指标都是用户提供。数值下降百分比/百分点/最终值须区分，不明确用unspecified。更正指标必须唯一匹配target_id；多匹配澄清，不能新建替代更正。另加是新增，替换是两个独立决策操作。主题切换不沿用旧对象；另一个岗位询问是否替换。没有明确参与职责不能报告个人实现。所有ID只能来自材料，operations中data仅包含相应字段。create_improvement用title/problem/proposal/alternatives/recommendation/reason/risks/validation/evidence_ids/finding_ids/supersedes_id；update_improvement_decision仅decision；report_improvement_completed data为空；指标使用name/value/unit/change_type/baseline/sample_size/method/improvement_id/contribution_id。update_contribution使用personal_role/problem/action/tradeoffs/outcome/state/evidence_ids/verification/improvement_id。update_jd为jd与可选role。不要把改进已选择写成已实现。'
-
-def discuss(s,wid,body):
-    from .interaction_contract import Mutation
-    payload={'type':'chat',**body.model_dump()};old=receipt(s,wid,body.mutation_id,payload)
-    if old:return old
-    ctx=context(s,wid)
-    if ctx['version']!=body.expected_version:raise HTTPException(409,'讨论材料已变化，请刷新')
-    s.commit()
-    result=ask_json('DISCUSS',DiscussionResult,{'state':ctx,'message':body.content},DISCUSS_INSTRUCTION)
-    s.expire_all()
-    if state(s,wid)['version']!=body.expected_version:raise HTTPException(409,'讨论期间材料已变化；没有写入操作')
-    message=Message(workspace_id=wid,role='user',content=body.content,proposal={});s.add(message);s.flush()
-    applied={'changes':[],'actions':[]}
-    if result.intent=='explicit_update' and not result.clarification and result.operations:
-        applied=mutation(s,wid,Mutation(expected_version=body.expected_version,mutation_id='chat-op:'+digest(body.mutation_id),operations=result.operations),message.id)
-    elif result.operations:
-        result.operations=[]
-    if not applied['changes'] and not applied['actions']:
-        lock_state(s,wid,body.expected_version)
-    text='已知事实：'+result.known_facts+'\n建议与取舍：'+result.advice_and_tradeoffs+'\n缺失信息：'+result.missing_information+'\n'+result.clarification+'\n本次实际更新：'+('、'.join(x['op'] for x in applied['changes']) or '未修改项目信息')
-    reply=Message(workspace_id=wid,role='assistant',content=text,proposal={'interaction':True,'actions':applied['actions'],'mode':'model'});s.add(reply);s.flush()
-    response={'message':asdict(reply),'state':state(s,wid),'actions':applied['actions']};record_receipt(s,wid,body.mutation_id,payload,response);return response
 
 def review(s,wid,body):
     payload={'type':'review',**body.model_dump()};old=receipt(s,wid,body.mutation_id,payload)

@@ -30,20 +30,25 @@ pytest 使用临时数据库与源码请求 mock。Playwright 使用8001/5173与
 
 两种产物：project_reference 以完整上游项目为主体，不代表用户原创；personal_resume 围绕当前确认的个人贡献。讨论、尝试、实现、验证与支持程度分开；计划和待补问题放在模型正文外，用户数字保留来源及验证状态。显式规则参考稿仍供离线/演示使用，不冒充模型输出。贡献或项目事实更正保留历史，并使相关旧草稿待复核。
 
-生产模型流程：全量有效 Wiki 分块映射 → 无 JD 项目全貌 → 最多 6 个岗位调查问题 → Wiki 召回 → 候选发现 → 问题驱动固定 SHA 补证/卡片补全 → 独立 claim 核验 → 1–4 个主题与职责覆盖 → 结构化 Draft → 独立 HR/技术审查 → 最多一次补证重选/修订 → 确定性 Markdown。实际加载 backend/skills/resume_composition/SKILL.md 与 references/writing-template.md。每段关联 claim，缺证据不凑能力；成果可省略。独立请求仍使用同源模型，不是招聘结论或人工认证。
+生产模型流程（v6）：固定版本概况 → JD深化 → 原始代码检索与有界补读 → 架构主题及独立事实核验 → 共享分析包 → 贡献核验/全局选题 → 写作 → 独立 HR/技术双审 → 最多一次修订及复审。优化方向消费同一分析包，独立判断必要性，不再把大段Wiki拼入聊天。Wiki学习和问答保留；简历无需已有Wiki正文，必须有合法固定版本和可用索引。
 
-默认最多 128 次映射请求（64 批、每批最多一次引用修复），后续请求预算默认 16、RESUME_GENERATION_CALLS 限定 8–20，包含结构修复及重选；最多两轮写作，首稿一次独立HR/技术双审，修订稿做程序契约校验及一次独立双审；评分低且有可执行建议时最多修订一次，保留前后评分。API 报告用量达到 RESUME_MAX_REPORTED_TOKENS（默认 250000）后停止后续请求。UTF-8 字节估计不等于实际计費量，缺少 usage 表示未知。
+默认总预算20次（RESUME_GENERATION_CALLS 8–24），优化12次；每请求结构/引用修复最多一次。原始检索最多12+4条查询，补读共享一轮、32工具调用、12文件（上限16）、30000字符。实际加载写作Skill。事实、个人归属和实测指标分别校验；评分绑定具体草稿哈希，不证明人工质量。
 
-模型客户端及材料契约集中在 backend/app/resume_support.py。凭证默认读取 data/deepwiki-open/.env 中 DEEPSEEK_API_KEY/DEEPSEEK_BASE_URL；用 RESUME_MODEL_ENV_FILE、RESUME_MODEL_API_KEY、RESUME_MODEL_BASE_URL 覆盖。写作模型由 **RESUME_MODEL** 指定，未指定默认 deepseek-v4-pro，不再继承 DEEPWIKI_MODEL。Wiki 映射缓存默认 REPOCAREER_DATA/resume-analysis-cache，由 RESUME_ANALYSIS_CACHE_DIR 覆盖；按工作区/快照/材料/模型端点/指令隔离，JD 与贡献每次新读。失败批次不缓存，不静默丢弃后续 Wiki。
+写作模型配置仍为 RESUME_MODEL/RESUME_MODEL_API_KEY/RESUME_MODEL_BASE_URL，默认读取本地DeepSeek配置；与Wiki生成模型独立。共享缓存位于RESUME_ANALYSIS_CACHE_DIR（默认数据目录/resume-analysis-cache），含源码，禁止公开。索引身份包含SHA、embedding配置、维度、分块及文件哈希；新JD重新调查但复用向量，个人编辑不重做纯源码分析。代码embedding与查询embedding分开记录，缺失usage为未知。
+
+新检索接口需要安装受版本控制的sidecar扩展，详见[部署和检索验证](docs/architecture.md#原始检索扩展安装)。安装脚本不启动服务。CODE_INDEX_NEW_VECTOR_BUDGET默认0，只复用已有向量；新文件或模型变化需明确设置预算，不能把未配置的扩展当已部署。
 
 POST /api/workspaces/{id}/artifacts 使用 writing_mode=model、独立 idempotency_key 和当前表单 target_role/target_jd。缺省 writing_mode=reference 保持旧 API 兼容。artifact_service 负责准入、冻结材料、短事务与保存；同一工作区产物串行，不同工作区独立。Run 取消在下一阶段生效，已发 HTTP 模型请求不能撤销，结束前仍占用准入。简历 Run 的通用 /retry 返回 409，须通过原产物请求重试；材料/目标变化需新幂等键。运行中更正导致指纹改变时拒绝保存旧稿。重启将未结束 Run 标记 interrupted，不自动重放付费请求。
 
-历史 Markdown 草稿与旧审查记录保留预览/导出，不回填事实认证。resume_legacy.py 只用于明确的离线/历史评测比较，没有生产降级路径。
+历史 Markdown 草稿与旧审查记录保留预览/导出，不回填事实认证。旧legacy、Wiki映射及词面索引执行代码已删除；历史产物仍只读显示，不运行旧模型链路。
 
 ## 评测与项目记录
 
-离线契约对比：`.venv/Scripts/python scripts/eval-resume-quality.py --compare-legacy --output data/resume-quality-offline.json`。真实模式追加 `--real --workspace <ID> --freeze-revision`，**会消耗 API 用量**，需要人工核对，不自动证明质量提升。已存稿人工对比：`.venv/Scripts/python scripts/compare-resumes.py --workspace <id> --baseline <id> --candidate <id> --output data/resume-comparison.md`。
+离线生产入口验证：`.venv/Scripts/python scripts/eval-resume-quality.py --output data/resume-quality-offline.json`。使用固定SHA/JD与合成小源码、假embedding和预定模型响应，仅验证控制流。真实模型命令（另行授权后）：`.venv/Scripts/python scripts/eval-resume-quality.py --real --authorize-paid --input <冻结材料.json> --paid-call-limit 8 --output <隔离输出.json>`；也可用 `--workspace <ID>` 只读收集当前材料。8次可能不足补读/修订，失败仍保存阶段诊断，不自动加预算。输出只写隔离评测文件，不创建生产Artifact。
 
-当前范围见 docs/PRODUCT.md；恢复与验证见 docs/STATUS.md；决定沿革见 docs/DECISIONS.md；反馈任务见 docs/BACKLOG.md；本轮代码整理及兼容删除条件见 docs/code-review.md。旧分析/上传 API 尚未确认退役范围，继续保留。
+同输入比较用 `--before <已保存评测.json>`，强制核对输入指纹；旧输出只读，不重跑旧链路。人工需核对机制发现、事实支持、选题、贡献、重复和可读性。现有产物比较仍可使用 `scripts/compare-resumes.py`。历史单主题检查点回放与 `--compare-legacy` 已退出，不把旧候选回放当新调查结果。
 
-单主题回归可复用原审计检查点：`scripts/eval-resume-quality.py --real --checkpoint-input <冻结材料.json> --checkpoint-before <原评测.json> --theme <候选ID> --paid-call-limit 8 --output <隔离输出.json>`。该命令会付费，需本次明确授权；输入指纹/产物模式必须匹配原报告。`--source-path`/`--source-question`记录人工补查线索；`--resume-checkpoint`仅重用已完成的补全/核验结果，累计最多8次，不能结合`--compare-legacy`另跑付费基线。原映射/候选被回放，不能把该评测说成新版全量发现验收。人工规则见`fixtures/resume-quality/boundary-review.json`，真实记录/失败原因见`docs/resume-quality-progress.md`。
+当前范围见 docs/PRODUCT.md；恢复与验证见 docs/STATUS.md；决定沿革见 docs/DECISIONS.md；反馈任务见 docs/BACKLOG.md；旧代码处置见 docs/code-review.md。旧上传、讨论、规则参考等明确兼容能力继续保留。
+
+
+项目问答支持本地会话恢复、讨论约束/笔记及按需历史检索；不自动修改贡献或简历。使用方式、预算、删除、迁移和验证范围见 [讨论记忆说明](docs/memory/README.md)。

@@ -7,8 +7,8 @@ test('interactive iteration: selection metrics corrections editor review and rel
  await page.getByLabel('改进标题',{exact:true}).fill('保留角色隔离的统一执行器');await page.getByLabel('建议方案',{exact:true}).fill('先验证独立上下文，再复用执行代码');await page.getByRole('button',{name:'添加改进点',exact:true}).click();
  const card=page.getByTestId('improvement-card');await expect(card).toHaveCount(1);await card.getByRole('button',{name:'采用',exact:true}).click();await expect(card).toContainText('已采用 · 未开始');await card.getByRole('button',{name:'报告已完成',exact:true}).click();await expect(card).toContainText('用户报告完成，未核查源码');
  await page.getByLabel('指标名称',{exact:true}).fill('幻觉率下降');await page.getByLabel('指标数值',{exact:true}).fill('70');await page.getByLabel('变化类型',{exact:true}).selectOption('relative_decrease');await page.getByRole('button',{name:'添加指标',exact:true}).click();await expect(page.getByTestId('metric-card')).toContainText('70%');
- await page.getByRole('button',{name:'讨论区',exact:true}).click();await page.getByLabel('项目讨论',{exact:true}).fill('把幻觉率下降改成80%');await page.getByRole('button',{name:'发送讨论',exact:true}).click();await expect(page.locator('p.pre').filter({hasText:'离线模拟返回'})).toBeVisible();
- await page.getByRole('button',{name:'当前信息',exact:true}).click();await expect(page.getByTestId('metric-card')).toHaveCount(1);await expect(page.getByTestId('metric-card')).toContainText('80%');await expect(page.getByTestId('metric-card')).toContainText('v2');
+ await page.getByRole('button',{name:'讨论区',exact:true}).click();await page.getByLabel('项目讨论',{exact:true}).fill('把幻觉率下降改成80%');await page.getByRole('button',{name:'发送讨论',exact:true}).click();await expect(page.getByText('把幻觉率下降改成80%',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'当前信息',exact:true}).click();await expect(page.getByTestId('metric-card')).toHaveCount(1);await expect(page.getByTestId('metric-card')).toContainText('70%');await page.getByTestId('metric-card').getByRole('button',{name:'编辑指标',exact:true}).click();await page.getByLabel('指标数值',{exact:true}).fill('80');await page.getByRole('button',{name:'保存指标更正',exact:true}).click();await expect(page.getByTestId('metric-card')).toContainText('80%');await expect(page.getByTestId('metric-card')).toContainText('v2');
  await page.getByLabel('当前 JD',{exact:true}).fill('Agent编排与上下文隔离');await page.getByRole('button',{name:'保存当前 JD',exact:true}).click();
  await page.getByRole('button',{name:'项目经历编辑器',exact:true}).click();await page.getByText('高级生成设置',{exact:true}).click();await page.getByLabel('迭代生成方式',{exact:true}).selectOption('reference');await page.getByRole('button',{name:'生成项目参考建议',exact:true}).click();await expect(page.getByRole('button',{name:'接受建议并保存新版本',exact:true})).toBeVisible();await expect(page.getByLabel('项目经历正文')).toHaveValue('');await page.getByRole('button',{name:'接受建议并保存新版本',exact:true}).click();await expect(page.getByLabel('项目经历正文')).not.toHaveValue('');
  await page.getByLabel('项目经历正文').fill('人工文本：快照恢复');await page.getByRole('button',{name:'保存手动修改',exact:true}).click();await expect(page.getByText(/正文已保存/)).toBeVisible();
@@ -62,4 +62,17 @@ test('optimization directions can be saved selected edited deleted and restored 
  await first.getByRole('button',{name:'编辑方向',exact:true}).click();await page.getByLabel('优化方向内容').fill('改为优先复用已有调度机制，暂未实施');await page.getByRole('button',{name:'保存优化方向',exact:true}).click();await expect(first).toContainText('优先复用');
  await first.getByRole('button',{name:'删除方向',exact:true}).click();await expect(first).toHaveCount(0);
  await expect(page.getByLabel('选择方向：记忆优化')).toBeChecked();
+});
+
+test('discussion constraints persist, can be corrected and deleted without business changes',async({page})=>{
+ const w=await (await page.request.post('/api/workspaces',{data:{interest:'持久讨论测试',role:'开发'}})).json();
+ await page.addInitScript(id=>localStorage.setItem('repocareer.workspace',id),w.id);await page.goto('/?view=admin');await page.getByRole('button',{name:'讨论区',exact:true}).click();
+ await page.getByLabel('项目讨论',{exact:true}).fill('约束：只考虑本地部署');await page.getByRole('button',{name:'发送讨论',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('请先完成项目Wiki分析');
+ await page.getByText('已保存约束与讨论笔记',{exact:true}).click();await expect(page.getByText('只考虑本地部署',{exact:true})).toBeVisible();
+ await page.reload();await page.getByRole('button',{name:'讨论区',exact:true}).click();await page.getByText('已保存约束与讨论笔记',{exact:true}).click();await expect(page.getByText('只考虑本地部署',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'更正笔记',exact:true}).click();await page.getByLabel('更正讨论笔记').fill('允许云端但需要成本上限');await page.getByRole('button',{name:'保存更正',exact:true}).click();await expect(page.getByText('允许云端但需要成本上限',{exact:true})).toBeVisible();
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'删除会话',exact:true}).click();await expect(page.getByText('允许云端但需要成本上限',{exact:true})).toHaveCount(0);
+ await page.reload();await page.getByRole('button',{name:'讨论区',exact:true}).click();await expect(page.getByText('约束：只考虑本地部署',{exact:true})).toHaveCount(0);
+ const after=await (await page.request.get('/api/workspaces/'+w.id)).json();expect(after.contributions).toEqual([]);expect(after.artifacts).toEqual([]);expect(after.jd_versions).toEqual([]);
 });

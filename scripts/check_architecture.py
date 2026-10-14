@@ -4,9 +4,9 @@ from pathlib import Path
 import sys
 from importlib.util import resolve_name
 
-CONTRACTS = {'schemas', 'architecture_schema', 'resume_contract', 'interaction_contract'}
+CONTRACTS = {'schemas', 'architecture_schema', 'resume_contract', 'interaction_contract','discussion_contract'}
 ORCHESTRATION = {'main', 'artifact_service', 'analysis', 'agent', 'memory',
-                 'task_lifecycle', 'resume_writer', 'resume_quality', 'interaction_service'}
+                 'task_lifecycle', 'resume_writer', 'resume_quality', 'interaction_service','shared_analysis','optimization_review','discussion_service','discussion_memory','discussion_context'}
 BASELINE = 'backend.app.resume_legacy'
 
 
@@ -67,10 +67,9 @@ def check(root):
             local=target.removeprefix('backend.app.') if target.startswith('backend.app.') else None
             if local and local not in known and local+'.'+symbol in known:local+='.'+symbol
             if local:graph[name].append((local,line))
-            # The sole existing compatibility edge is evaluation-only and function-scoped.
-            bridge=name=='resume_writer' and scope==('write_legacy',) and target==BASELINE and symbol=='write_legacy'
+            # The retired executable baseline has no compatibility exception.
             legacy=target==BASELINE or target.startswith(BASELINE+'.') or target=='backend.app.resume_writer' and symbol in ('write_legacy','*')
-            if name!='resume_legacy' and legacy and not bridge:
+            if legacy:
                 errors.append(f'{path.relative_to(root)}:{line}: A01 production cannot depend on evaluation baseline ({target}.{symbol})')
     for start in sorted(CONTRACTS & graph.keys()):
         def walk(node, chain, visited):

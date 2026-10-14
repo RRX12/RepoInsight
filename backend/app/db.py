@@ -140,6 +140,15 @@ class InteractionState(Base):
     revision: Mapped[int] = mapped_column(Integer,default=0)
     data: Mapped[dict] = mapped_column(JSON,default=dict)
 
+class Conversation(Scoped, Base):
+    __tablename__ = 'conversations'
+    surface: Mapped[str] = mapped_column(String)
+    revision: Mapped[int] = mapped_column(Integer,default=0)
+    data: Mapped[dict] = mapped_column(JSON,default=dict)
+    updated_at: Mapped[str] = mapped_column(String,default=now)
+    deleted_at: Mapped[str | None] = mapped_column(String)
+
+
 def asdict(row):
     return {c.name: getattr(row, c.name) for c in row.__table__.columns}
 

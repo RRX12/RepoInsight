@@ -77,8 +77,7 @@ def test_rate_limit_no_unbounded_retry(monkeypatch):
     with pytest.raises(ProviderError,match='限流'): g.get('/repos/a/b')
     assert len(calls)==1
 def test_chat_demo_checkpoint_and_no_automatic_write(client,wid):
-    r=client.post(f'/api/workspaces/{wid}/messages',json={'content':'讨论 Redis 但没实现'});assert r.status_code==200
-    assert r.json()['proposal']['mode']=='demo' and '演示' in r.json()['content']
+    r=client.post(f'/api/workspaces/{wid}/messages',json={'content':'讨论 Redis 但没实现'});assert r.status_code==410
     assert client.get(f'/api/workspaces/{wid}/contributions').json()==[]
 def test_model_parse_failure_has_one_repair(monkeypatch):
     import backend.app.providers as providers

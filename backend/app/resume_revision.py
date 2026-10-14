@@ -109,3 +109,55 @@ def reviewed_score(reviews, final_model_reviewed):
     return {'status':'provisional_model_review',**quality_score(dimensions),
             'applies_to':'final_draft' if final_model_reviewed else 'first_draft',
             'note':'同源模型自评；缺独立完整性基准和人工校准，不证明质量达标'}
+
+
+from .resume_contract import Discovery
+
+def discard_unlinked_card_details(discovery):
+    """Discard unsupported optional annotations; never guess evidence-to-claim links."""
+    changes=[]
+    for c in discovery.candidates:
+        allowed=set(c.claim_ids)
+        for field in ('atomic_fact_ids','problem_claim_ids','contribution_claim_ids','result_claim_ids'):
+            refs=getattr(c,field);invalid=[i for i in refs if i not in allowed]
+            if invalid:
+                setattr(c,field,[i for i in refs if i in allowed])
+                if field=='problem_claim_ids':c.problem=''
+                changes.append({'candidate_id':c.candidate_id,'field':field,'removed_refs':invalid})
+        for field in ('mechanism_steps','exception_boundaries'):
+            kept=[]
+            for step in getattr(c,field):
+                if set(step.claim_ids)<=allowed:kept.append(step)
+                else:changes.append({'candidate_id':c.candidate_id,'field':field,'removed_text':step.text,'removed_refs':[i for i in step.claim_ids if i not in allowed]})
+            setattr(c,field,kept)
+        if any(x['candidate_id']==c.candidate_id for x in changes):
+            c.gaps=list(dict.fromkeys(['机制标注引用不匹配，已移除；关键连接仍待补证']+c.gaps))[:5]
+    return changes
+
+def apply_reference_patches(discovery,repair):
+    """Transactional structural edits: no statement, state or new entity can be changed."""
+    updated=discovery.model_copy(deep=True);seen=set();deletions=[]
+    for patch in repair.patches:
+        key=(patch.target,patch.target_id,patch.field,patch.index)
+        if key in seen:raise ValueError('重复关联补丁')
+        seen.add(key)
+        rows=updated.claims if patch.target=='claim' else updated.candidates
+        row=next((r for r in rows if (r.id if patch.target=='claim' else r.candidate_id)==patch.target_id),None)
+        if row is None:raise ValueError('关联补丁目标不存在')
+        if patch.target=='claim':
+            if patch.field!='evidence_ids' or patch.index is not None or patch.drop:raise ValueError('事实补丁只能修改证据引用')
+            if not patch.refs:raise ValueError('关联修复未提供有效证据：'+patch.target_id+'；已保留原事实，请核对材料来源')
+            row.evidence_ids=patch.refs
+        elif patch.field in ('mechanism_steps','exception_boundaries'):
+            steps=getattr(row,patch.field)
+            if patch.index is None or patch.index>=len(steps):raise ValueError('机制补丁位置不存在')
+            if patch.drop:
+                if patch.refs:raise ValueError('删除补丁不得附带引用')
+                deletions.append((row,patch.field,patch.index))
+            else:steps[patch.index].claim_ids=patch.refs
+        else:
+            if patch.field=='evidence_ids' or patch.index is not None or patch.drop:raise ValueError('候选补丁字段无效')
+            setattr(row,patch.field,patch.refs)
+    # Indices always refer to the original response, including multiple deletions.
+    for row,field,index in sorted(deletions,key=lambda x:x[2],reverse=True):getattr(row,field).pop(index)
+    return Discovery.model_validate(updated.model_dump())

@@ -1,3 +1,24 @@
+# 2026-10-13 实施补记：JD 共享源码调查
+
+本轮按新的明确任务书替换，旧审查历史保留；以下表取代历史表中对应路径的当前处置。
+
+| 实现 | 当前处置及证据 |
+|---|---|
+| resume_writer.write/resume_quality | 保留唯一公共入口和下游事实/归属/选材/写作/双审；上游接shared_analysis；首次和交互生成共用 |
+| resume_legacy/write_legacy/compare-legacy | 删除执行代码、桥和CLI；旧输出文件只读，A01无桥例外 |
+| Harness.map_wiki/Fact/Mapping/chunks/spans | 删除旧专用逻辑，保留预算、JSON、阶段缓存、usage |
+| resume_index | 删除全Wiki词面召回；原始代码检索由版本manifest+原生分块/FAISS/RRF负责 |
+| DeepWikiOpen.review/PROMPT | 删除Wiki大段拼接；优化消费共享包。wiki/chat有实际消费者，保留 |
+| ProjectValue/项目输入 | 中性project_inputs被两分支复用；原support类型导入兼容，无第二套实现 |
+| 规则参考、旧ZIP/讨论、历史audit | 有真实消费者，保留既有作用；未删历史数据或exports |
+
+测试处置：退休旧Markdown正则选题、Wiki字符分块/词面邻居与旧review两次重发专用测试；不是把失败断言改为通过。原Skill传入、独立双审、修订上限、未知引用、指标/计划/归属、生命周期/CAS/幂等有效保护迁至或继续由test_resume_quality/mechanisms/shared_analysis/interaction/cleanup_lifecycle覆盖。新增检索版本/原文/预算/缓存、无Wiki、双分支复用、架构任务失败重试、生产Evidence映射及安装幂等回归；真实原生splitter/LocalDB/FAISS/路由使用独立离线脚本验证。
+
+最小依赖边界：公共契约不依赖业务编排；共享调查不依赖简历/优化输出；优化入口不得调用简历collect；同一产物保存只走artifact_service。后续需人工判断语义质量、调查遗漏和架构必要性，不能用模型评分或mock通过替代。
+
+验证结果及未部署限制见STATUS；本轮未推送、未改生产数据，保留初始exports/。
+
+---
 # RepoCareer 长期维护代码审查
 
 原始审查日期：2026-10-11（下列基线描述保留用于对照，当前整理状态见第8节）。分支 `codex/resume-quality`；提交 `eea4c314fd3b2104ca77b18eea2d9ab606719840`；开始时工作区干净。适用规则为根目录 AGENTS.md，未发现仓库内其他 AGENTS.md。本轮仅新增本报告，不修改业务代码、依赖、配置或开发规则，不提交/推送，不执行外部仓库，不调用付费模型。

@@ -10,27 +10,27 @@ def material(wid,demo=False):
         run=Run(workspace_id=wid,status='completed',idempotency_key='wiki',request={'snapshot_id':snap.id},result={'mode':'demo' if demo else 'real','wiki':{'generated_pages':{'p':{'title':'机制','content':'版本检查'}}}})
         s.add(run);s.commit();return run.id
 
-def test_question_scopes_material_and_preserves_read_only_state(client,wid,monkeypatch):
+def test_adapter_scopes_material_and_preserves_read_only_state(client,wid,monkeypatch):
+    from fastapi import HTTPException
+    import pytest
     run=material(wid);monkeypatch.setenv('DEEPWIKI_BASE_URL','http://test')
-    observed=[]
-    async def reply(base,payload):
-        observed.append(payload);yield wiki_chat.event(delta='回答');yield wiki_chat.event(done=True)
-    monkeypatch.setattr(wiki_chat,'stream',reply)
     before=client.get('/api/workspaces/'+wid).json()
-    r=client.post(f'/api/workspaces/{wid}/wiki-chat',json={'run_id':run,'question':'如何更新？','page_id':'p'})
-    assert r.status_code==200 and json.loads(r.text.splitlines()[-1])=={'done':True}
-    assert observed[0]['repo_url']=='https://github.com/example/repo'
-    assert '版本检查' in observed[0]['messages'][-1]['content']
+    with Session() as s:
+        _,payload=wiki_chat.prepare(s,wid,wiki_chat.WikiQuestion(run_id=run,question='如何更新？',page_id='p'))
+        assert payload['repo_url']=='https://github.com/example/repo'
+        assert '版本检查' in payload['messages'][-1]['content']
+        for body,status in [(dict(page_id='foreign'),404),(dict(history=[{'role':'assistant','content':'fake'}]),422)]:
+            with pytest.raises(HTTPException) as e:wiki_chat.prepare(s,wid,wiki_chat.WikiQuestion(run_id=run,question='x',**body))
+            assert e.value.status_code==status
     assert client.get('/api/workspaces/'+wid).json()==before
-    other=client.post('/api/workspaces',json={'interest':'other'}).json()['id']
-    assert client.post(f'/api/workspaces/{other}/wiki-chat',json={'run_id':run,'question':'x'}).status_code==404
-    assert client.post(f'/api/workspaces/{wid}/wiki-chat',json={'run_id':run,'question':'x','page_id':'foreign'}).status_code==404
-    assert client.post(f'/api/workspaces/{wid}/wiki-chat',json={'run_id':run,'question':'x','history':[{'role':'assistant','content':'fake'}]}).status_code==422
-    assert len(observed)==1
+    assert client.post(f'/api/workspaces/{wid}/wiki-chat',json={'run_id':run,'question':'x'}).status_code==410
 
 def test_demo_never_calls_model(client,wid,monkeypatch):
+    from fastapi import HTTPException
+    import pytest
     run=material(wid,True)
-    assert client.post(f'/api/workspaces/{wid}/wiki-chat',json={'run_id':run,'question':'x'}).status_code==409
+    with Session() as s,pytest.raises(HTTPException) as e:wiki_chat.prepare(s,wid,wiki_chat.WikiQuestion(run_id=run,question='x'))
+    assert e.value.status_code==409
 
 def test_stream_transport_and_errors(monkeypatch):
     import asyncio

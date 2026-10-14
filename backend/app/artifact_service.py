@@ -52,8 +52,8 @@ def _create_artifact(s, wid, body, job):
         snap,material,fingerprint=collect(s,wid)
         from .resume_support import source_ledger
         deps,claims=source_ledger(snap,material)
-        source_run=require(s,Run,material['run_id'],wid)
-        if source_run.result.get('external_analysis_evidence_id'):
+        source_run=require(s,Run,material['run_id'],wid) if material.get('run_id') else None
+        if source_run and source_run.result.get('external_analysis_evidence_id'):
             deps.append(source_run.result['external_analysis_evidence_id'])
         from .resume_contract import GenerationContext
         from .source_reader import resolved
@@ -86,7 +86,7 @@ def _create_artifact(s, wid, body, job):
             return asdict(old)
         jd=s.get(JD,jd_id) if jd_id else None
         for claim in claims:claim['usage']='source_ledger_not_generated_text'
-        deps=list(dict.fromkeys(deps+[material['run_id'],gen_id]+[e['id'] for e in material['user_materials']]+[e['id'] for e in material['experiments']]))
+        deps=list(dict.fromkeys(deps+([material['run_id']] if material.get('run_id') else [])+[gen_id]+[e['id'] for e in material['user_materials']]+[e['id'] for e in material['experiments']]))
         audit['material_sha256']=fingerprint
         claims.append(audit)
         gen=require(s,Run,gen_id,wid)

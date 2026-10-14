@@ -106,10 +106,15 @@ class SourceReader:
             with Session() as s:
                 baseline=s.scalar(select(Evidence).where(Evidence.workspace_id==self.workspace_id,Evidence.snapshot_id==self.snapshot.id,Evidence.path==path))
                 if not baseline or baseline.content_hash!=cached['hash']:raise ProviderError('上传内容与原快照哈希不一致','source_revision')
-        lines=cached['text'].splitlines();start,end=line_range or (1,min(241,len(lines)))
+        lines=cached['text'].splitlines(keepends=True);start,end=line_range or (1,min(241,len(lines)))
         if start>len(lines) or end>len(lines):raise ProviderError('源码行范围超出文件','source_range')
-        excerpt='\n'.join(lines[start-1:end]);key=f'{repo}|{sha}|{path}|{start}:{end}|{cached["hash"]}'
+        excerpt=''.join(lines[start-1:end]);key=f'{repo}|{sha}|{path}|{start}:{end}|{cached["hash"]}'
         return SourceEvidence(id='code:'+sha256(key)[:24],kind='documentation' if Path(path).suffix.lower()=='.md' else 'test_source' if re.search(r'(^|/)(tests?|__tests__)(/|$)|[._]test[._]|test_',path) else 'code',repo=repo,commit_sha=sha,path=path,start_line=start,end_line=end,content_hash=sha256(excerpt),excerpt=excerpt,revision_status='resolved' if resolved(sha) else 'content_hash_bound')
+    def read_document(self,repo,sha,path):
+        """Full bounded document for explicit indexing; same version/hash/path checks."""
+        self.read_source(repo,sha,path)
+        return self._cache(repo+'|'+sha+'|'+path,lambda:None)['text']
+
     def search_ranges(self,repo,sha,path,terms):
         """Structure-friendly windows around matches; overlap preserves nearby guards/callers."""
         self.read_source(repo,sha,path) # fills immutable full-file cache

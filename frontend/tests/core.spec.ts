@@ -38,6 +38,7 @@ test('restores model resume when default arrays are omitted',async({page})=>{
 test('generation submits edited role and JD including explicit empty values',async({page})=>{
  const workspace={id:'target-regression',interest:'目标传递测试',role:'旧岗位',snapshots:[],runs:[],jd_versions:[{id:'old-jd',raw_text:'旧JD'}],messages:[],contributions:[],evidence:[],artifacts:[]};
  const requests:any[]=[];
+ await page.route('**/api/workspaces/target-regression/conversations**',r=>r.fulfill({json:{id:'target-conversation',revision:0,data:{topics:[]},messages:[],memories:[],message_count:0,pending_requests:[]}}));
  await page.route('**/api/workspaces/target-regression/interaction',r=>r.fulfill({json:{version:'fixture',role:workspace.role,jd:'旧JD',metrics:[],improvements:[],contributions:[],proposals:[],resume_versions:[],stale_reasons:[],actions:[],current_resume:null}}));
  await page.route('**/api/workspaces',r=>r.fulfill({json:[workspace]}));
  await page.route('**/api/workspaces/target-regression?summary=true',r=>r.fulfill({json:workspace}));
@@ -102,13 +103,23 @@ test('failed generation refreshes terminal status and preserves saved resume',as
  const requests:any[]=[];
  await page.route('**/api/workspaces',r=>r.fulfill({json:[workspace]}));
  await page.route('**/api/workspaces/wiki-chat-fixture?summary=true',r=>r.fulfill({json:workspace}));
- await page.route('**/api/workspaces/wiki-chat-fixture/wiki-chat',r=>{requests.push(r.request().postDataJSON());return r.fulfill({contentType:'application/x-ndjson',body:requests.length===1?'{"delta":"按角色独立执行"}\n{"done":true}\n':'{"delta":"部分回答"}\n{"error":"连接超时"}\n'});});
+ let messages:any[]=[],revision=0;
+ await page.route('**/api/workspaces/wiki-chat-fixture/conversations**',r=>{
+  const url=r.request().url(),method=r.request().method();
+  if(url.endsWith('/turns')){
+   const body=r.request().postDataJSON();requests.push(body);revision+=2;
+   messages.push({id:'u'+requests.length,role:'user',content:body.content,proposal:{discussion:{status:requests.length===1?'completed':'failed'}}});
+   if(requests.length===1)messages.push({id:'a1',role:'assistant',content:'按角色独立执行',proposal:{discussion:{status:'completed'}}});
+   return r.fulfill({contentType:'application/x-ndjson',body:requests.length===1?'{"delta":"按角色独立执行"}\n{"done":true}\n':'{"delta":"部分回答"}\n{"error":"连接超时"}\n'});
+  }
+  return r.fulfill({json:{id:'conv',revision,data:{topics:[]},messages,message_count:messages.length,memories:[]}});
+ });
  await page.addInitScript(()=>localStorage.setItem('repocareer.workspace','wiki-chat-fixture'));
  await page.goto('/');await page.getByRole('button',{name:'查看项目全貌'}).click();
  await expect(page.getByRole('heading',{name:'调度机制'})).toBeVisible();
  await page.getByRole('button',{name:'向项目提问',exact:true}).click();await page.getByLabel('向项目提问',{exact:true}).fill('如何调度？');await page.getByRole('button',{name:'发送问题',exact:true}).click();await expect(page.getByText('按角色独立执行',{exact:true})).toBeVisible();
  await page.getByLabel('辅助章节').selectOption('two');await page.getByLabel('向项目提问').fill('如何更新？');await page.getByRole('button',{name:'发送问题',exact:true}).click();await expect(page.getByRole('alert')).toHaveText('连接超时');
- expect(requests[1].history).toHaveLength(2);expect(requests[1].page_id).toBe('two');
- await page.getByRole('button',{name:'发送问题',exact:true}).click();await expect.poll(()=>requests.length).toBe(3);expect(requests[2].history).toHaveLength(2);
- await page.getByRole('button',{name:'项目设置',exact:true}).click();await page.getByRole('button',{name:'项目全貌',exact:true}).click();await expect(page.getByText('按角色独立执行',{exact:true})).toHaveCount(0);
+ expect(requests[1].history).toBeUndefined();expect(requests[1].expected_revision).toBe(2);expect(requests[1].page_id).toBe('two');
+ await page.getByRole('button',{name:'发送问题',exact:true}).click();await expect.poll(()=>requests.length).toBe(3);expect(requests[2].history).toBeUndefined();
+ await page.getByRole('button',{name:'项目设置',exact:true}).click();await page.getByRole('button',{name:'项目全貌',exact:true}).click();await page.getByRole('button',{name:'向项目提问',exact:true}).click();await expect(page.getByText('按角色独立执行',{exact:true})).toBeVisible();await page.reload();await page.getByRole('button',{name:'向项目提问',exact:true}).click();await expect(page.getByText('按角色独立执行',{exact:true})).toBeVisible();
  });

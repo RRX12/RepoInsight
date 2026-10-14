@@ -50,8 +50,8 @@ def test_deepwiki_adapter_and_path_validation(client,wid,monkeypatch):
     p=DeepWikiOpen(transport=httpx.MockTransport(handle),chat_call=lambda _:json.dumps(fixture['report']))
     try:
         wiki=p.wiki(snapshot,lambda *a:None,lambda *a:None,lambda:False)
-        report,coverage=p.review(snapshot,wiki,'Agent','MCP multi-agent Skill',lambda *a:None,lambda:False)
-        assert coverage['failed_pages']==['失败页']
+        assert wiki['generated_pages']['failed']['content'].startswith('Error')
+        report=fixture['report']
         assert report['jd_assessment'][0]['recommendation']=='not_needed'
         report['directions']=[];report['no_change_reason']='已有架构足够'
         validate_paths(ArchitectureReport.model_validate(report),snapshot.coverage['read_files'])
@@ -59,50 +59,11 @@ def test_deepwiki_adapter_and_path_validation(client,wid,monkeypatch):
         with pytest.raises(ValueError):validate_paths(ArchitectureReport.model_validate(report),snapshot.coverage['read_files'])
     finally:p.close()
 
-@pytest.mark.parametrize('response,expected', [('not JSON','invalid_json'), ('{}','missing')])
-def test_review_records_json_and_schema_diagnostics(client,wid,monkeypatch,response,expected):
-    monkeypatch.setenv('DEEPWIKI_BASE_URL','http://deepwiki.test')
-    snap=upload(client,wid,{'workflow.py':'x=1'}).json()
-    with Session() as s: snapshot=s.get(Snapshot,snap['id'])
-    wiki=json.loads(Path('fixtures/architecture_demo.json').read_text(encoding='utf-8'))['wiki']
-    diagnostics=[];p=DeepWikiOpen(chat_call=lambda _:response)
-    try:
-        with pytest.raises(ProviderError):
-            p.review(snapshot,wiki,'Agent','Skill',lambda *a:None,lambda:False,diagnostics.append)
-        assert len(diagnostics)==2
-        assert diagnostics[0]['errors'][0]['type']==expected
-        assert 'input' not in diagnostics[0]['errors'][0]
-    finally:p.close()
 
 def test_missing_deepwiki_never_falls_back(monkeypatch):
     monkeypatch.delenv('DEEPWIKI_BASE_URL',raising=False)
     with pytest.raises(ProviderError,match='不会用旧AST模板替代'):DeepWikiOpen()
 
-def test_review_repairs_specific_errors_without_accepting_unknown_paths(client,wid,monkeypatch):
-    monkeypatch.setenv('DEEPWIKI_BASE_URL','http://deepwiki.test')
-    snap=upload(client,wid,{'workflow.py':'x=1'}).json()
-    with Session() as s: snapshot=s.get(Snapshot,snap['id'])
-    fixture=json.loads(Path('fixtures/architecture_demo.json').read_text(encoding='utf-8'))
-    report=fixture['report']
-    for m in report['overview']['modules']+report['overview']['existing_capabilities']: m['paths']=['workflow.py']
-    for f in report['overview']['core_flows']: f['paths']=['workflow.py']
-    for d in report['directions']: d['source_paths']=['workflow.py']
-    bad=json.loads(json.dumps(report));bad['overview']['modules'][0]['paths']=['invented.py']
-    calls=[];diagnostics=[]
-    def chat(payload):
-        calls.append(payload['messages'][0]['content'])
-        return json.dumps(bad if len(calls)==1 else report)
-    p=DeepWikiOpen(chat_call=chat)
-    try:
-        result,_=p.review(snapshot,fixture['wiki'],'Agent','Skill',lambda *a:None,lambda:False,diagnostics.append)
-        assert result['overview']['modules'][0]['paths']==['workflow.py']
-        assert 'invented.py' in calls[1] and '上次具体校验错误' in calls[1]
-        assert diagnostics[0]['errors'][0]['type']=='ValueError'
-        p.chat_call=lambda _:json.dumps(bad)
-        with pytest.raises(ProviderError,match='invented.py'):
-            p.review(snapshot,fixture['wiki'],'Agent','Skill',lambda *a:None,lambda:False,diagnostics.append)
-        assert diagnostics[-1]['attempt']==2
-    finally:p.close()
 
 def test_analysis_correction_invalidates_resume(client,wid):
     a=client.post(f'/api/workspaces/{wid}/artifacts',json={'type':'resume','idempotency_key':'a'}).json()
@@ -113,7 +74,7 @@ def test_github_link_payload_cache_and_switch(client,wid,monkeypatch):
     from backend.app.db import Improvement,Artifact
     link=client.post(f'/api/workspaces/{wid}/repository-link',json={'url':'https://github.com/example/document-agent.git'}).json()
     assert link['metadata_json']['github_url']=='https://github.com/example/document-agent'
-    assert link['commit_sha'].startswith('unresolved:')
+    assert link['commit_sha']=='a'*40
     assert client.post(f'/api/workspaces/{wid}/repository-link',json={'url':'https://github.com/example/document-agent'}).json()['id']==link['id']
     assert client.post(f'/api/workspaces/{wid}/repository-link',json={'url':'http://127.0.0.1/secret'}).status_code==502
     artifact=client.post(f'/api/workspaces/{wid}/artifacts',json={'type':'resume','idempotency_key':'before-switch'}).json()
@@ -135,9 +96,9 @@ def test_github_link_payload_cache_and_switch(client,wid,monkeypatch):
     p=DeepWikiOpen(transport=httpx.MockTransport(handle),chat_call=lambda _:json.dumps(fixture['report']))
     try:
         wiki=p.wiki(snapshot,lambda *a:None,lambda *a:None,lambda:False)
-        report,coverage=p.review(snapshot,wiki,'Agent','Skill MCP',lambda *a:None,lambda:False)
+        report=fixture['report'];coverage={'source_paths':[p for page in wiki['generated_pages'].values() for p in page.get('filePaths',[])]}
         assert coverage['source_paths']==['app/workflow.py']
-        assert '未独立读取源码' in coverage['note']
+        assert wiki['provenance']['revision_status']=='unknown'
     finally:p.close()
 
 def test_deepwiki_network_failure_is_specific(client,wid,monkeypatch):
@@ -168,3 +129,14 @@ def test_archive_fallback_rejects_traversal_and_preserves_existing(monkeypatch,t
     assert (tmp_path/'repo/app.py').read_text()=='x=1'
     with pytest.raises(ValueError,match='Existing repository directory preserved'):
         module.download_github_archive('https://github.com/example/repo',tmp_path/'repo',tmp_path)
+
+
+def test_unresolved_link_preserves_existing_snapshot(client,wid,monkeypatch):
+    url=f'/api/workspaces/{wid}/repository-link'
+    saved=client.post(url,json={'url':'https://github.com/example/project'}).json()
+    monkeypatch.setattr('backend.app.source_reader.SourceReader.resolve_revision',lambda *a,**k:{'commit_sha':'unresolved:github','error':'GitHub API 限流'})
+    response=client.post(url,json={'url':'https://github.com/example/other'})
+    assert response.status_code==422
+    assert '未保存' in response.json()['error']['message']
+    snapshots=client.get(f'/api/workspaces/{wid}').json()['snapshots']
+    assert [s['id'] for s in snapshots]==[saved['id']]

@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 from backend.app.db import Session,MemoryEvent,InteractionState,Artifact
 from backend.app import interaction_service as svc
-from backend.app.interaction_contract import DiscussionResult,ReviewResult
+from backend.app.interaction_contract import ReviewResult
 
 
 def base(wid):return '/api/workspaces/'+wid+'/interaction'
@@ -62,21 +62,13 @@ def test_metric_correction_history_jd_and_workspace(client,wid):
     assert post(client,other,'/editor',content='',restore_id=artifact['id']).status_code==404
 
 
-def test_chat_hypothesis_ambiguity_and_atomic_update(client,wid,monkeypatch):
-    mutate(client,wid,op('create_metric',{'name':'指标甲','value':70,'unit':'%'}),op('create_metric',{'name':'指标乙','value':70,'unit':'%'}))
-    metrics=view(client,wid)['metrics']
-    for intent in ['hypothetical','ambiguous','discussion']:
-        monkeypatch.setattr(svc,'ask_json',lambda *a,intent=intent:DiscussionResult(intent=intent,clarification='指的是哪一个指标？' if intent=='ambiguous' else '',operations=[op('update_metric',{'value':80},metrics[0]['id'])]))
-        r=post(client,wid,'/chat',content='希望达到80%');assert r.status_code==200,r.text
-        assert view(client,wid)['metrics']==metrics
-    monkeypatch.setattr(svc,'ask_json',lambda *a:DiscussionResult(intent='explicit_update',operations=[op('update_metric',{'value':80},metrics[0]['id']),op('create_improvement',{'title':'另外加缓存'})]))
-    r=post(client,wid,'/chat',content='把甲改为80，另外加缓存');assert r.status_code==200,r.text
-    state=view(client,wid);assert len(state['metrics'])==2 and state['metrics'][-1]['value']==80 and len(state['improvements'])==1
-    assert state['metrics'][-1]['source_message_id']
-    before=state
-    monkeypatch.setattr(svc,'ask_json',lambda *a:DiscussionResult(intent='explicit_update',operations=[op('update_jd',{'jd':'不应保存'}),op('update_metric',{'value':9},'foreign')]))
-    assert post(client,wid,'/chat',content='非法模型操作').status_code==404
-    assert view(client,wid)==before
+def test_retired_chat_cannot_mutate_business_state(client,wid,monkeypatch):
+    mutate(client,wid,op('create_metric',{'name':'指标甲','value':70,'unit':'%'}))
+    before=view(client,wid)
+    monkeypatch.setattr(svc,'ask_json',lambda *a: (_ for _ in ()).throw(AssertionError('no model on retired route')))
+    for content in ('希望达到80%','把甲改为80，另外加缓存','修改JD'):
+        assert post(client,wid,'/chat',content=content).status_code==410
+        assert view(client,wid)==before
 
 
 def test_review_preserves_text_accept_restore_and_sync_is_separate(client,wid,monkeypatch):

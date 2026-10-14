@@ -132,6 +132,7 @@ def execute(rid):
         with Session.begin() as s:
             r=s.get(Run,rid)
             if r.status != 'cancelled':
+                r.result={**r.result,'failure_trace':getattr(exc,'stage_trace',[]),'failure_calls':getattr(exc,'stage_calls',[])}
                 r.status='failed'; r.error=str(exc) if isinstance(exc,ProviderError) else '内部分析失败，已完成步骤保留；查看服务端错误并安全重试。'
         if not isinstance(exc,ProviderError):
             import traceback; traceback.print_exc()
@@ -167,18 +168,31 @@ def execute_architecture(rid,req,wid,start):
                     r=s.get(Run,rid)
                     if r.status=='cancelled':return
                     r.result={**r.result,'wiki':wiki}
-            def save_diagnostic(detail):
-                with Session.begin() as s:
-                    r=s.get(Run,rid)
-                    history=list(r.result.get('review_diagnostics',[]))
-                    r.result={**r.result,'review_diagnostics':(history+[detail])[-10:]}
-            report,coverage=provider.review(snap,wiki,req['role'],req['jd_text'],lambda t,d:step(rid,t,d),lambda:cancelled(rid),save_diagnostic)
+            from .project_inputs import collect_project
+            from .optimization_review import generate as review_optimization
+            with Session() as context_session:
+                frozen,material,source_fingerprint=collect_project(context_session,wid)
+                if frozen.id!=snap.id:raise ProviderError('调查期间项目快照已改变','source_revision')
+            if material['role']!=req['role'] or material['jd_version_id']!=req['jd_version_id']:raise ProviderError('岗位已变更，请重新分析','source_revision')
+            def check_active():
+                if cancelled(rid):raise ProviderError('任务已取消','cancelled')
+                with Session() as active_session:
+                    _,_,active_fingerprint=collect_project(active_session,wid)
+                    if active_fingerprint!=source_fingerprint:raise ProviderError('调查输入已更正','source_revision')
+            report,coverage=review_optimization(snap,material,lambda t,d:step(rid,t,d),check_active)
         if cancelled(rid):return
         with Session.begin() as s:
             r=s.get(Run,rid)
             if r.status=='cancelled':return
+            if not req['demo']:
+                _,_,current_fingerprint=collect_project(s,wid)
+                if current_fingerprint!=source_fingerprint:raise ProviderError('调查期间输入已更正，未保存旧报告','source_revision')
             evidences=scoped(s,Evidence,wid)
             source_map={e.path:e.id for e in evidences if e.snapshot_id==snap.id and e.type in ('source_code','readme')}
+            for source in coverage.get('source_evidence',[]):
+                if source.get('path') and source['kind'] in ('code','documentation','test_source'):
+                    record=attach(s,wid,'source_code',source['excerpt'],'shared-code://'+source['id'],snapshot_id=snap.id,path=source['path'],line_start=source.get('start_line'),line_end=source.get('end_line'))
+                    source_map[source['path']]=record.id
             mode='demo' if req['demo'] else 'deepwiki_open'
             external=attach(s,wid,'external_analysis',json.dumps(wiki,ensure_ascii=False),f'{mode}://wiki/{snap.id}',snapshot_id=snap.id)
             for old in scoped(s,Improvement,wid):
@@ -189,11 +203,11 @@ def execute_architecture(rid,req,wid,start):
                 if d['necessity']=='not_recommended':continue
                 refs=[source_map[p] for p in d['source_paths'] if p in source_map] if not req['demo'] else []
                 details={**d,'analysis_kind':'architecture','problem':d['business_problem'],'paths':', '.join(d['source_paths']),
-                    'source_evidence_ids':refs,'external_analysis_evidence_id':external.id,'coverage':snap.coverage,
+                    'source_evidence_ids':refs,'analysis_pack_ref':coverage.get('analysis_pack_id'),'external_analysis_evidence_id':external.id,'coverage':snap.coverage,
                     'status_note':'架构级建议，必要性需验证；不是个人贡献','acceptance_criteria':d['validation_plan'],'hypothesis':'；'.join(d['assumptions'])}
                 i=Improvement(workspace_id=wid,snapshot_id=snap.id,jd_version_id=req['jd_version_id'],details=details);s.add(i);s.flush();improvement_ids.append(i.id)
             r.result={**r.result,'report':report,'review_coverage':coverage,'mode':mode,'analysis_kind':'architecture','improvement_ids':improvement_ids,
-                'external_analysis_evidence_id':external.id,'usage':{'status':'unavailable','reason':'DeepWiki-Open接口未返回汇总token usage'},
+                'external_analysis_evidence_id':external.id,'analysis_pack_ref':coverage.get('analysis_pack_id'),'source_evidence_ids':list(dict.fromkeys(source_map.values())),'usage':{'wiki':{'status':'unknown','reason':'上游未返回汇总用量'},'shared_analysis':[c for c in coverage.get('calls',[]) if not c['stage'].startswith('OPTIMIZATION_')],'optimization':[c for c in coverage.get('calls',[]) if c['stage'].startswith('OPTIMIZATION_')],'embedding':coverage.get('embedding_usage',[])},
                 'elapsed_seconds':time.monotonic()-start,'limitations':'全面Wiki不等于全覆盖或运行认证；建议来自项目架构必要性评审。'}
             r.status='completed';r.error=None
     finally:

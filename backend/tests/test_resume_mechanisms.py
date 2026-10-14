@@ -3,7 +3,7 @@ import json
 import pytest
 from backend.app.providers import ProviderError
 from backend.app.resume_contract import Candidate, Claim, Choice, Discovery, Requirement
-from backend.app.resume_quality import writing_pack, source_investigation, validate_discovery
+from backend.app.resume_quality import writing_pack, validate_discovery
 from backend.app.source_reader import SourceEvidence
 from backend.tests.test_resume_quality import Stub, MATERIAL, SHA, claim, candidate, context
 from backend.app.resume_writer import write
@@ -23,30 +23,9 @@ def test_writer_packet_excludes_rejected_and_unsupported_mechanisms():
 def test_card_fact_reference_must_belong_to_candidate():
     d=Discovery(claims=[Claim(**claim())],candidates=[Candidate(**{**candidate(),'exception_boundaries':[{'text':'撤销时终止','claim_ids':['invented']}]})])
     with pytest.raises(ValueError,match='机制卡片事实'):
-        validate_discovery(d,{'wiki:0:chunk:0:span:0':SourceEvidence(id='wiki:0:chunk:0:span:0',kind='wiki',repo='example/demo',commit_sha='unknown',content_hash='h',excerpt='x',revision_status='unknown')},[Requirement(requirement_id='r1',description='memory',origin='jd',question='memory?',search_terms=['memory'])],context(),{})
+        validate_discovery(d,{'source:memory':SourceEvidence(id='source:memory',kind='wiki',repo='example/demo',commit_sha='unknown',content_hash='h',excerpt='x',revision_status='unknown')},[Requirement(requirement_id='r1',description='memory',origin='jd',question='memory?',search_terms=['memory'])],context(),{})
 
-def test_source_reads_are_candidate_driven_and_share_budget(monkeypatch):
-    monkeypatch.setenv('RESUME_SOURCE_FILES','2')
-    class Reader:
-        def __init__(self):self.reads=[]
-        def list_tree(self,*args):return {'paths':['README.md','app/View.tsx','lib/boundary.ts','lib/consent.ts','lib/memory.ts'],'truncated':False}
-        def search_ranges(self,repo,sha,path,terms):
-            self.reads.append((path,terms))
-            return [SourceEvidence(id=path,kind='code',repo=repo,commit_sha=sha,path=path,content_hash='h',excerpt='x',revision_status='resolved')]
-    reader=Reader();ledger={'paths':set(),'chars':0};evidence={}
-    c=Candidate(**{**candidate(),'investigation_questions':['consent withdraw 如何终止？'],'source_paths':['lib/boundary.ts','lib/consent.ts']})
-    first=source_investigation(reader,{**MATERIAL,'commit':SHA},evidence,[],cards=[c],ledger=ledger)
-    c.source_paths=['lib/memory.ts']
-    second=source_investigation(reader,{**MATERIAL,'commit':SHA},evidence,[],cards=[c],ledger=ledger)
-    assert {p for p,_ in reader.reads}=={'lib/boundary.ts','lib/consent.ts'}
-    assert len(reader.reads)==2 and ledger['chars']==2
-    assert first[0]['candidates'][0]['candidate_id']=='n1'
-    assert any(r['status']=='budget' for r in second)
 
-def test_no_gap_does_not_read_source_or_invent_connection():
-    class Reader:
-        def list_tree(self,*args):raise AssertionError('no gap means no source scan')
-    assert source_investigation(Reader(),{**MATERIAL,'commit':SHA},{},[],cards=[Candidate(**candidate())])[0]['status']=='not_needed'
 
 def test_missing_mechanism_repairs_only_downstream_once():
     stub=Stub();rounds=0
@@ -56,13 +35,13 @@ def test_missing_mechanism_repairs_only_downstream_once():
         if stage=='REVIEW_TECHNICAL':
             rounds+=1
             return json.dumps({'approved':rounds>1,'feedback':[] if rounds>1 else [{'category':'mechanism_missing','issue':'解释过期更新拒绝','candidate_ids':['n1']}]})
-        if stage=='DISCOVER_INCREMENTAL':return stub('DISCOVER\n')
+        if stage=='INVESTIGATE_INCREMENTAL':return stub('INVESTIGATE\n')
         return stub(prompt)
     _,audit=write(None,MATERIAL,model)
     stages=[r['stage'] for r in audit['harness']['calls']]
-    assert stages.count('DISCOVER_INCREMENTAL')==1
-    assert stages.count('PRODUCT')==stages.count('JD_PLAN')==stages.count('DISCOVER')==1
-    assert stages.count('CLAIM_VERIFY_RESELECT')==1
+    assert stages.count('SYNTHESIZE')==1
+    assert stages.count('PROJECT_CONTEXT')==stages.count('JD_PLAN')==stages.count('INVESTIGATE')==1
+    assert stages.count('CLAIM_VERIFY_INCREMENTAL')==1
     assert audit['reselected'] and len(audit['reviews'])==2 and audit['final_model_reviewed'] is True
 
 def test_production_writer_keeps_project_spine_but_not_unselected_cards():
@@ -90,28 +69,10 @@ def test_fact_feedback_reverifies_only_named_fact_without_source_restart():
     _,audit=write(None,MATERIAL,model)
     stages=[r['stage'] for r in audit['harness']['calls']]
     assert stages.count('CLAIM_VERIFY_FEEDBACK')==1
-    assert stages.count('JD_PLAN')==stages.count('DISCOVER')==1
-    assert not any(r['stage']=='DISCOVER_INCREMENTAL' for r in audit['trace'])
+    assert stages.count('JD_PLAN')==stages.count('INVESTIGATE')==1
+    assert not any(r['stage']=='INVESTIGATE_INCREMENTAL' for r in audit['trace'])
     assert audit['reviews'][0]['perspectives'][1]['feedback'][0]['blocking'] is True
 
-def test_checkpoint_runner_caps_paid_calls_and_labels_replay(monkeypatch):
-    import importlib.util
-    from pathlib import Path
-    from backend.app.providers import ProviderError
-    spec=importlib.util.spec_from_file_location('resume_eval',Path('scripts/eval-resume-quality.py'))
-    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    class Provider:
-        model='offline-test';usage=[]
-        def request(self,*args,**kwargs):return '{}'
-        def close(self):pass
-    monkeypatch.setattr('backend.app.resume_support.WritingModel',Provider)
-    audit={'candidates':[candidate()],'generated_claims':[claim()], 'project_map':{'facts':[]}}
-    model=module.CheckpointModel(audit,MATERIAL,'n1',1)
-    assert json.loads(model.request('ANALYZE\n',stage='ANALYZE'))=={'facts':[],'uncertainties':[]}
-    assert model.paid==0 and model.replayed==['ANALYZE']
-    model.request('WRITE\n',stage='WRITE')
-    with pytest.raises(ProviderError,match='付费调用预算'):model.request('WRITE\n',stage='WRITE')
-    assert model.paid==1
 
 def test_actual_artifact_api_keeps_selected_fact_packet_and_idempotent_output(client,wid,monkeypatch):
     from backend.app.db import Session,Run
@@ -123,7 +84,7 @@ def test_actual_artifact_api_keeps_selected_fact_packet_and_idempotent_output(cl
     first=client.post(f'/api/workspaces/{wid}/artifacts',json=body)
     assert first.status_code==200,first.text
     audit=next(c for c in first.json()['claims'] if c['kind']=='writing_review')
-    assert audit['schema_version']=='resume-quality-v5'
+    assert audit['schema_version']=='resume-quality-v6'
     assert audit['structured_draft']['bullets'][0]['claim_ids']==['c1']
     count=len(stub.calls)
     second=client.post(f'/api/workspaces/{wid}/artifacts',json=body)
@@ -152,15 +113,15 @@ def test_discovery_link_repair_is_bounded_and_preserves_claim_collection():
     stub=Stub();repairs=[]
     def model(prompt):
         stage=prompt.split('\n',1)[0]
-        if stage=='DISCOVER':
+        if stage=='INVESTIGATE':
             d=json.loads(stub(prompt))
             d['candidates'][0]['exception_boundaries']=[{'text':'过期拒绝','claim_ids':['c2']}]
             return json.dumps(d)
-        if stage=='DISCOVER_LINK_REPAIR':
+        if stage=='INVESTIGATE_LINK_REPAIR':
             repairs.append(stage);return json.dumps({'patches':[{'target':'candidate','target_id':'n1','field':'exception_boundaries','index':0,'drop':True}]})
         return stub(prompt)
     _,audit=write(None,MATERIAL,model)
-    assert repairs==['DISCOVER_LINK_REPAIR']
+    assert repairs==['INVESTIGATE_LINK_REPAIR']
     assert {c['id'] for c in audit['generated_claims']}=={'c1','c2'}
     assert audit['status']=='passed'
 
@@ -170,20 +131,6 @@ def test_review_never_receives_unsupported_mechanism_as_fact():
     assert '"claim_limits":' in prompt and '"mechanism": "拒绝过期更新"' not in prompt
     assert '"id": "c1", "statement"' not in prompt
 
-def test_followup_can_read_new_range_of_same_file_without_double_counting():
-    class Reader:
-        def __init__(self):self.count=0
-        def list_tree(self,*args):return {'paths':['lib/memory.ts'],'truncated':False}
-        def search_ranges(self,repo,sha,path,terms):
-            self.count+=1
-            return [SourceEvidence(id='range:'+str(self.count),kind='code',repo=repo,commit_sha=sha,path=path,content_hash='h',excerpt='abc',revision_status='resolved')]
-    r=Reader();c=Candidate(**{**candidate(),'source_paths':['lib/memory.ts'],'investigation_questions':['version check']})
-    ledger={'paths':set(),'chars':0};evidence={}
-    source_investigation(r,{**MATERIAL,'commit':SHA},evidence,[],cards=[c],ledger=ledger)
-    c.investigation_questions=['reject stale caller']
-    source_investigation(r,{**MATERIAL,'commit':SHA},evidence,[],['lib/memory.ts'],cards=[c],ledger=ledger)
-    source_investigation(r,{**MATERIAL,'commit':SHA},evidence,[],['lib/memory.ts'],cards=[c],ledger=ledger)
-    assert r.count==2 and len(ledger['paths'])==1 and ledger['chars']==6
 
 def test_combined_feedback_does_not_select_twice_before_rewrite():
     stub=Stub();rounds=0
@@ -200,7 +147,7 @@ def test_combined_feedback_does_not_select_twice_before_rewrite():
     _,audit=write(None,MATERIAL,model)
     stages=[r['stage'] for r in audit['harness']['calls']]
     assert stages.count('RESELECT')==1 and 'RESELECT_FACT' not in stages
-    assert stages.count('PRODUCT')==1 and audit['status']=='passed'
+    assert stages.count('PROJECT_CONTEXT')==1 and audit['status']=='passed'
 
 
 def test_single_writer_uses_selected_facts_and_distinct_reviews():
@@ -217,16 +164,16 @@ def test_single_writer_uses_selected_facts_and_distinct_reviews():
     assert '你仅从技术面试官角度' in prompts['REVIEW_TECHNICAL']
     assert '"evidence":' not in prompts['REVIEW_HR']
     assert '"evidence":' in prompts['REVIEW_TECHNICAL']
-    assert {t['output_structure']['task'] for t in audit['trace'] if t['status']=='prompt_ready'}=={'hr_selection','hr_review','technical_review'}
+    assert {t['output_structure']['task'] for t in audit['trace'] if t['status']=='prompt_ready'}=={'hr_selection','technical_investigation','hr_review','technical_review'}
 
 
 def test_repair_drops_unlinked_annotations_without_guessing_fact_links():
     stub=Stub()
     def model(prompt):
         stage=prompt.split('\n',1)[0]
-        if stage=='DISCOVER_LINK_REPAIR':return json.dumps({'patches':[]})
-        if stage=='DISCOVER':
-            d=json.loads(stub('DISCOVER\n'))
+        if stage=='INVESTIGATE_LINK_REPAIR':return json.dumps({'patches':[]})
+        if stage=='INVESTIGATE':
+            d=json.loads(stub('INVESTIGATE\n'))
             card=d['candidates'][0]
             card['mechanism_steps']=[{'text':'已知事实','claim_ids':['c1']},{'text':'不能猜测的越界机制','claim_ids':['wiki:0','c2']}]
             card['problem_claim_ids']=['wiki:0']
@@ -256,14 +203,14 @@ def test_supported_unknown_state_stops_before_selection_or_empty_writing():
 def test_optional_source_path_budget_does_not_request_schema_repair():
     stub=Stub()
     def model(prompt):
-        if prompt.startswith('DISCOVER\n'):
+        if prompt.startswith('INVESTIGATE\n'):
             d=json.loads(stub(prompt));d['candidates'][0]['source_paths']=['a.ts','b.ts','c.ts','d.ts','e.ts']
             return json.dumps(d)
         return stub(prompt)
     _,audit=write(None,MATERIAL,model)
     assert audit['candidates'][0]['source_paths']==['a.ts','b.ts','c.ts','d.ts']
     assert any(t['status']=='source_paths_budgeted' for t in audit['trace'])
-    assert not any(stage=='DISCOVER_SCHEMA_REPAIR' for stage,_ in stub.calls)
+    assert not any(stage=='INVESTIGATE_SCHEMA_REPAIR' for stage,_ in stub.calls)
 
 
 def test_project_spine_only_accepts_supported_implemented_upstream():
@@ -294,13 +241,6 @@ def test_reference_selector_receives_scope_policy_and_only_eligible_facts():
     assert '"candidate_id": "n1"' not in prompt
 
 
-def test_mapping_inventory_preserves_tail_and_distinguishes_page_prefixes():
-    from backend.app.resume_quality import mapping_inventory
-    material={'_full_wiki_pages':[{'title':str(i),'content':'x'} for i in range(12)]}
-    mapped={'facts':[{'source_ref':'wiki:11:chunk:0:span:0','mechanism':'尾部异常恢复'}]}
-    rows=mapping_inventory(material,mapped)
-    assert len(rows)==12 and rows[11]['mechanisms']==['尾部异常恢复']
-    assert rows[1]['mapped_fact_count']==0 and rows[1]['status']=='no_mapped_facts'
 
 
 def test_local_import_hints_resolve_only_existing_safe_paths():
@@ -310,21 +250,6 @@ def test_local_import_hints_resolve_only_existing_safe_paths():
     assert related_source_paths('lib/engine.ts',text,tree)==['lib/memory.ts','lib/storage/index.ts']
 
 
-def test_source_investigation_follows_one_hop_within_shared_budget(monkeypatch):
-    monkeypatch.setenv('RESUME_SOURCE_FILES','6')
-    class Reader:
-        def __init__(self):self.reads=[]
-        def list_tree(self,*args):return {'paths':['lib/engine.ts','lib/state.ts','lib/deeper.ts'],'truncated':False}
-        def search_ranges(self,repo,sha,path,terms):
-            self.reads.append(path)
-            text="import {save} from './state';" if path=='lib/engine.ts' else "import {write} from './deeper';"
-            return [SourceEvidence(id=path,kind='code',repo=repo,commit_sha=sha,path=path,content_hash='h',excerpt=text,revision_status='resolved')]
-    reader=Reader();ledger={'paths':set(),'chars':0};evidence={}
-    card=Candidate(**{**candidate(),'investigation_questions':['engine提交在哪里发生'],'source_paths':['lib/engine.ts']})
-    trace=source_investigation(reader,{**MATERIAL,'commit':SHA},evidence,[],cards=[card],ledger=ledger)
-    assert reader.reads==['lib/engine.ts','lib/state.ts']
-    assert ledger['paths']==set(reader.reads)
-    assert any(t['status']=='dependency_hint' for t in trace)
 
 
 def test_reference_patch_preserves_facts_and_rejects_unknown_targets():
@@ -355,13 +280,13 @@ def test_empty_evidence_patch_is_rejected_without_mutating_original():
 def test_discovery_unbound_personal_label_does_not_trigger_link_repair():
     stub=Stub()
     def model(prompt):
-        if prompt.startswith('DISCOVER\n'):
+        if prompt.startswith('INVESTIGATE\n'):
             d=json.loads(stub(prompt));d['claims'][0]['attribution']='user_confirmed'
             return json.dumps(d)
         return stub(prompt)
     _,audit=write(None,MATERIAL,model)
-    assert any(t['stage']=='DISCOVER' and t['status']=='attribution_capped' for t in audit['trace'])
-    assert not any(r['stage']=='DISCOVER_LINK_REPAIR' for r in audit['harness']['calls'])
+    assert any(t['stage']=='INVESTIGATE' and t['status']=='attribution_capped' for t in audit['trace'])
+    assert not any(r['stage']=='INVESTIGATE_LINK_REPAIR' for r in audit['harness']['calls'])
 
 
 @pytest.mark.parametrize('field,index',[('claim_ids',None),('mechanism_steps',0),('exception_boundaries',0)])
@@ -389,14 +314,14 @@ def test_discovery_budget_is_separate_from_compact_link_repair(monkeypatch):
     import httpx
     from backend.app.resume_support import WritingModel
     monkeypatch.setenv('RESUME_MODEL_API_KEY','offline-test')
-    monkeypatch.delenv('RESUME_DISCOVERY_MAX_TOKENS',raising=False)
+    monkeypatch.delenv('RESUME_INVESTIGATEY_MAX_TOKENS',raising=False)
     payloads=[]
     def handle(request):
         payloads.append(json.loads(request.content))
         return httpx.Response(200,json={'choices':[{'message':{'content':'{}'},'finish_reason':'stop'}]})
     model=WritingModel(transport=httpx.MockTransport(handle))
     try:
-        model.request('DISCOVER',stage='DISCOVER')
-        model.request('repair',stage='DISCOVER_LINK_REPAIR')
+        model.request('INVESTIGATE',stage='INVESTIGATE')
+        model.request('repair',stage='INVESTIGATE_LINK_REPAIR')
         assert [p['max_tokens'] for p in payloads]==[12000,3500]
     finally:model.close()

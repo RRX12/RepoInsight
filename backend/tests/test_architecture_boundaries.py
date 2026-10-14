@@ -7,10 +7,11 @@ def app(tmp_path,files):
     return tmp_path
 
 
-def test_baseline_bridge_is_exact_and_not_a_module_wide_exception(tmp_path):
+def test_no_legacy_bridge_exception_remains(tmp_path):
     root=app(tmp_path,{'resume_writer':"def write_legacy():\n    from .resume_legacy import write_legacy as baseline\n    return baseline()\n\ndef write():\n    from .resume_legacy import write_legacy\n",'resume_legacy':''})
     errors=check(root)
-    assert len(errors)==1 and 'A01' in errors[0] and ':6:' in errors[0]
+    assert len(errors)==2 and all('A01' in e for e in errors)
+    assert ':2:' in errors[0] and ':6:' in errors[1]
 
 
 def test_all_import_forms_and_production_bridge_call_are_detected(tmp_path):
