@@ -15,14 +15,12 @@ from .memory import *
 from .providers import GitHub, ModelProvider, ProviderError, demo_fixture, repo_name
 from .analysis import recover_runs, submit, still_executing
 from .agent import SKILLS, load_skill
-from .artifact_service import create_artifact
-from .task_lifecycle import inline_active
 from .repository_upload import import_zip, MAX_ARCHIVE
 
 @asynccontextmanager
 async def lifespan(app):
     migrate(); recover_runs(); discussion_store.recover(); yield
-app = FastAPI(title='RepoCareer', lifespan=lifespan)
+app = FastAPI(title='RepoInsight', lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=['http://127.0.0.1:5173','http://localhost:5173'], allow_methods=['*'], allow_headers=['*'])
 def session():
     with Session() as s:
@@ -56,7 +54,7 @@ async def operational_error(request, exc):
 @app.get('/api/config')
 def config(): return {'model_mode':'demo' if ModelProvider().demo else 'real','skills':SKILLS,'github':'public REST / optional token','max_material_chars':200000,
     'deepwiki_configured':bool(os.getenv('DEEPWIKI_BASE_URL')),'deepwiki_provider':os.getenv('DEEPWIKI_PROVIDER','google'),'deepwiki_model':os.getenv('DEEPWIKI_MODEL','服务默认'),
-    'deepwiki_web_url':os.getenv('DEEPWIKI_WEB_URL',''), 'max_archive_bytes':MAX_ARCHIVE,'product_flow':'github_architecture_review'}
+    'deepwiki_web_url':os.getenv('DEEPWIKI_WEB_URL',''), 'max_archive_bytes':MAX_ARCHIVE,'product_flow':'github_project_exploration'}
 @app.get('/api/workspaces')
 def workspaces(s=Depends(session)): return [asdict(w) for w in s.scalars(select(Workspace).order_by(Workspace.created_at.desc()))]
 @app.post('/api/workspaces')
@@ -74,7 +72,7 @@ def save_repository_link(wid:str,body:RepositoryLinkInput,s=Depends(session)):
     require(s,Workspace,wid)
     owner,repo=repo_name(body.url)
     if not repo:raise HTTPException(422,'仓库名称无效')
-    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'请先等待或停止当前分析')
+    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'请先等待或停止当前分析')
     url=f'https://github.com/{owner}/{repo}'
     previous=scoped(s,Snapshot,wid)
     from .source_reader import SourceReader
@@ -99,7 +97,7 @@ def save_repository_link(wid:str,body:RepositoryLinkInput,s=Depends(session)):
 @app.post('/api/workspaces/{wid}/repository-upload')
 async def upload_repository(wid:str,request:Request,s=Depends(session)):
     require(s,Workspace,wid)
-    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'分析进行中，请先等待或取消后再上传新快照')
+    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'分析进行中，请先等待或取消后再上传新快照')
     if request.headers.get('content-type','').split(';')[0]!='application/zip':raise HTTPException(415,'请上传ZIP文件（application/zip）')
     raw=bytearray()
     async for chunk in request.stream():
@@ -112,14 +110,13 @@ async def upload_repository(wid:str,request:Request,s=Depends(session)):
 @app.post('/api/workspaces/{wid}/architecture-runs')
 def architecture_run(wid:str,body:ArchitectureRunInput,s=Depends(session)):
     w=require(s,Workspace,wid);snap=require(s,Snapshot,body.snapshot_id,wid);jd=latest_jd(s,wid)
-    if not w.role.strip() or w.role=='待填写':raise HTTPException(422,'请先填写岗位名称')
     if snap.metadata_json.get('source_kind') not in ('archive','github_link'):raise HTTPException(422,'请先保存GitHub仓库链接')
-    req={**body.model_dump(),'architecture':True,'role':w.role,'jd_version_id':jd.id if jd else None,'jd_text':jd.raw_text if jd else '', 'target_origin':'jd' if jd and jd.raw_text.strip() else 'role_inferred'}
+    req={**body.model_dump(),'architecture':True,'role':w.role if w.role.strip() and w.role!='待填写' else '项目工程优化','jd_version_id':jd.id if jd else None,'jd_text':jd.raw_text if jd else '', 'target_origin':'jd' if jd and jd.raw_text.strip() else 'role_inferred'}
     old=s.scalar(select(Run).where(Run.workspace_id==wid,Run.idempotency_key==body.idempotency_key))
     if old:
         if old.request!=req:raise HTTPException(409,'幂等键对应的快照或岗位JD已变化')
         return asdict(old)
-    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'当前工作区已有运行中的分析')
+    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)):raise HTTPException(409,'当前工作区已有运行中的分析')
     r=Run(workspace_id=wid,request=req,idempotency_key=body.idempotency_key,result={'snapshot_id':snap.id});s.add(r);s.commit();submit(r.id);return asdict(r)
 @app.patch('/api/workspaces/{wid}')
 def update_workspace(wid:str,body:WorkspaceInput,s=Depends(session)):
@@ -151,7 +148,7 @@ def new_run(wid:str,body:RunInput,s=Depends(session)):
     if old:
         if old.request != body.model_dump(): raise HTTPException(409,'幂等键已用于不同请求')
         return asdict(old)
-    if inline_active(wid) or any(r.status in ('queued','running') for r in scoped(s,Run,wid)): raise HTTPException(409,'该工作区已有运行中的任务')
+    if any(r.status in ('queued','running') for r in scoped(s,Run,wid)): raise HTTPException(409,'该工作区已有运行中的任务')
     r=Run(workspace_id=wid,request=body.model_dump(),idempotency_key=body.idempotency_key); s.add(r); s.commit(); submit(r.id); return asdict(r)
 @app.get('/api/runs/{rid}')
 def run(rid:str,workspace_id:str,s=Depends(session)): return asdict(require(s,Run,rid,workspace_id))
@@ -165,9 +162,9 @@ def cancel(rid:str,workspace_id:str,s=Depends(session)):
 def retry(rid:str,workspace_id:str,s=Depends(session)):
     r=require(s,Run,rid,workspace_id)
     if r.request.get('resume_generation'):
-        raise HTTPException(409,'简历任务不能通过分析队列重试，请用原产物请求重新生成；材料变化时使用新幂等键')
+        raise HTTPException(409,'历史简历任务已退役，不能重新生成')
     if r.status not in ('failed','interrupted','cancelled'): raise HTTPException(409,'只有失败、中断或取消的任务可重试')
-    if still_executing(rid) or inline_active(workspace_id): raise HTTPException(409,'上一次任务正在停止，请稍后重试；已避免同一任务并发执行')
+    if still_executing(rid): raise HTTPException(409,'上一次任务正在停止，请稍后重试；已避免同一任务并发执行')
     if any(x.id != r.id and x.status in ('queued','running') for x in scoped(s,Run,workspace_id)): raise HTTPException(409,'工作区已有进行中的任务')
     r.status='queued'; r.error=None; s.commit(); submit(r.id); return asdict(r)
 @app.post('/api/workspaces/{wid}/evidence')
@@ -208,9 +205,6 @@ def choose_improvement(iid:str,workspace_id:str,s=Depends(session)):
     operations.append({'op':'update_improvement_decision','target_id':iid,'data':{'decision':'selected'}})
     interaction.mutation(s,workspace_id,Mutation(expected_version=interaction.state(s,workspace_id)['version'],mutation_id=uid(),operations=operations))
     s.get(Workspace,workspace_id).stage='practice';return asdict(i)
-@app.post('/api/workspaces/{wid}/artifacts')
-def new_artifact(wid:str,body:ArtifactInput,s=Depends(session)):
-    return create_artifact(s,wid,body)
 @app.get('/api/artifacts/{aid}')
 def artifact(aid:str,workspace_id:str,s=Depends(session)): return asdict(require(s,Artifact,aid,workspace_id))
 @app.get('/api/artifacts/{aid}/export')
@@ -230,7 +224,7 @@ def messages(wid:str,s=Depends(session)):
     require(s,Workspace,wid); return [asdict(m) for m in scoped(s,Message,wid)]
 
 from . import interaction_service as interaction
-from .interaction_contract import Mutation,DiscussionInput,EditInput,ReviewInput,DecisionInput,GenerateInput
+from .interaction_contract import Mutation,DiscussionInput
 @app.get('/api/workspaces/{wid}/interaction')
 def interaction_state(wid:str,s=Depends(session)):return interaction.state(s,wid)
 @app.post('/api/workspaces/{wid}/interaction/mutations')
@@ -238,14 +232,6 @@ def interaction_mutation(wid:str,body:Mutation,s=Depends(session,scope='function
 @app.post('/api/workspaces/{wid}/interaction/chat')
 def interaction_chat(wid:str,body:DiscussionInput):
     raise HTTPException(410,'聊天不再执行业务写入，请使用 conversations 讨论接口；业务修改请使用独立表单')
-@app.post('/api/workspaces/{wid}/interaction/editor')
-def interaction_edit(wid:str,body:EditInput,s=Depends(session)):return interaction.save_text(s,wid,body)
-@app.post('/api/workspaces/{wid}/interaction/review')
-def interaction_review(wid:str,body:ReviewInput,s=Depends(session)):return interaction.review(s,wid,body)
-@app.post('/api/workspaces/{wid}/interaction/generate')
-def interaction_generate(wid:str,body:GenerateInput,s=Depends(session)):return interaction.generate(s,wid,body)
-@app.post('/api/workspaces/{wid}/interaction/decision')
-def interaction_decision(wid:str,body:DecisionInput,s=Depends(session)):return interaction.decide(s,wid,body)
 from . import wiki_chat
 @app.post('/api/workspaces/{wid}/wiki-chat')
 def wiki_question(wid:str,body:wiki_chat.WikiQuestion):

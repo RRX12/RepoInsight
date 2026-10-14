@@ -125,7 +125,7 @@ def prepare(request:Request,body:Prepare):
             if body.uploaded_files is not None:raise ValueError('github_files_must_come_from_fixed_sha')
             try:files,skipped=git_files(folder,revision)
             except (OSError,subprocess.SubprocessError):files,skipped=archive_files(body.repo_identity,revision)
-        # Existing sidecar owns deserialization; RepoCareer never opens this pickle.
+        # Existing sidecar owns deserialization; RepoInsight never opens this pickle.
         seed=[]
         from api.rag.pipeline import get_repo_db
         from adalflow.core.db import LocalDB

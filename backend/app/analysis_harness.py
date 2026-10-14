@@ -34,7 +34,7 @@ class Harness:
 
     def stage_cache_key(self, prompt, scope):
         return digest({'version':'role-stage-v1','scope':scope,'model':self.model,'prompt':prompt,
-                       'discovery_output_limit':os.getenv('RESUME_DISCOVERY_MAX_TOKENS','12000')})
+                       'discovery_output_limit':(os.getenv('PROJECT_DISCOVERY_MAX_TOKENS') or os.getenv('RESUME_DISCOVERY_MAX_TOKENS','12000'))})
 
     def read_stage(self, key, schema):
         if self.check_active:self.check_active()
@@ -62,7 +62,7 @@ class Harness:
             raise ProviderError('阶段输入超过安全预算，请减少材料或分阶段处理；未静默截断', 'resume_budget')
         usage = getattr(self.chat, 'usage', [])
         reported = sum((u.get('usage') or {}).get('total_tokens', 0) for u in usage)
-        if reported >= int(os.getenv('RESUME_MAX_REPORTED_TOKENS', '250000')):
+        if reported >= int((os.getenv('PROJECT_MAX_REPORTED_TOKENS') or os.getenv('RESUME_MAX_REPORTED_TOKENS', '250000'))):
             raise ProviderError('API已报告Token用量达到本次预算；缓存保留，不继续调用', 'resume_budget')
         start = time.monotonic()
         usage_count = len(usage)

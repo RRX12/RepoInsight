@@ -1,3 +1,39 @@
+# 当前发布：RepoInsight（2026-10-14）
+
+用户选择RepoInsight并授权创建RRX12/RepoInsight公开仓库、上传最新版。包含项目理解/优化讨论改造、简历退役、分步设置、岗位JD修改及本次品牌更新。原RepoCareer远端保留，不强推、不修改其权限。
+
+品牌/前端包名/后端标题/启动提示更新；新本地目录为C:/Users/RS/Documents/ChatGPT/RepoInsight。原AIforResulme根目录因当前Codex进程占用无法直接改名，改为创建新检出并迁入本地运行资料，原根目录保留源码备份。新数据库repoinsight.db通过SQLite backup迁移，旧库备份；新配置REPOINSIGHT优先，旧字段/浏览器选择/sidecar协议兼容，详见architecture。
+
+本次完整隔离检查：138后端、11浏览器、架构A01/A02、类型及隔离构建全部通过（data/repoinsight-check.txt）。无付费模型/向量预算提高；Mermaid既有大包提示保持。源码发布不包含.env、运行数据、依赖、构建产物或exports。具体远端SHA与本地新目录运行核对将在发布完成后补记。
+
+以下为实施阶段历史，不代表最新发布状态。
+
+---
+
+# 当前交接：分步设置与岗位JD修改（2026-10-14）
+
+- 按用户要求：项目设置先保存GitHub仓库，再显示可选岗位JD步骤；第二步下方为分析、跳过。统一“岗位JD”文案，不加斜杠；“修改岗位JD”放到“＋ 新项目”旁边，打开可保存/取消的编辑窗口。用户页移除顶部过程后台入口，直接后台地址仅保留排查。
+- 复用现有repository-link、target、architecture-runs，无新增后端API/模块。跳过明确保存空岗位JD与通用关注点，再分析；修改只保存版本化目标，不自动发起模型任务。修改历史保留，窗口切换项目/新建时清理，分析中禁用修改。原用户项目、上轮未提交系统改动及exports/保持；未提交/推送。
+- 验证：前端类型检查/生产构建通过；11项浏览器测试全通过（43.1秒），新增先仓库后JD、顶部编辑、保存历史/刷新、步骤返回保留内容、跳过清空旧JD及正常分析传递编辑值；原9项聊天/目录/方向/取消回归仍通过。相关后端10项通过（2.99秒），复用目标版本/幂等/隔离契约。既有Mermaid大包提示保留，无剩余检查失败。
+- 新frontend/dist已由正在运行的8000提供，首页和新脚本HTTP200；仅前端/文档变化，不重启后端、不修改生产业务记录、不调用真实模型。构建/测试日志data/setup-build-check.txt、setup-e2e-check.txt；刷新页面加载。
+- PRODUCT、architecture、README已同步分步流程与修改语义。真实模型质量限制沿用上一轮，测试使用隔离服务及离线fixture。
+
+---
+
+# 当前交接：项目理解与优化讨论（2026-10-14）
+
+- 用户明确要求用仓库链接生成项目全貌、项目提问与优化方向讨论，删除简历生成。分支codex/resume-quality，开始HEAD 13f0b32，原有exports/未跟踪资料保留。本轮未提交、未推送。
+- 已移除简历模型/规则写作、写作Skill、HR选题/双审模板、编辑/审查/生成/接受API、同步简历任务准入、前端简历/编辑组件和简历评测脚本；旧Artifact/贡献/指标/迁移数据保留，Artifact GET/export只读，历史简历Run不可重试。共享模型、预算、证据契约、引用修复和技术角色模板改中性模块名，不新增模型框架/Agent/依赖。PROJECT_配置优先，旧RESUME_配置兼容现有本地.env。
+- 用户页三个入口：项目设置、项目全貌、优化大方向。仓库链接可独立分析，岗位/关注点和JD可选。项目全貌左目录点击切换完整章节；两页复用FloatingChat + 原DiscussionChat，支持拖动、右下角调整尺寸、放大缩小、收起/展开、键盘移动与移动端视口约束。当前章节和“讨论此方向”分别带page_id/improvement_id；服务端冻结同工作区方案并在落库前比较指纹，编辑/删除拒绝旧答案；讨论不写业务事实。
+- 完整离线检查通过：.venv/Scripts/python scripts/check.py --e2e --pnpm C:/Users/RS/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback/pnpm.cmd，A01/A02、**138后端测试（11.55秒）**、TypeScript、隔离Vite构建、**9浏览器测试**通过。覆盖左目录/当前章节、浮窗移动/尺寸/收起/手机范围、方向上下文、方向CRUD/刷新、讨论约束更正删除、失败流及停止/离开后晚到答案隔离。源码/事实/候选演进/缓存/生命周期测试从简历混合测试迁移到项目分析；只删除退役写作/评分/编辑专属测试，未降低事实guard。首轮前端冷启动有2个超时，原断言原代码重跑7项全通过；追加停止/失败流后最终完整9项通过。中途迁移测试依赖/旧阶段预算失败已修正为当前项目调用方，最终无剩余检查失败。既有Mermaid大包提醒仍在，非新增功能失败。日志data/project-final-check.txt。
+- 本地已加载：确认8000无queued/running任务、讨论无pending，SQLite备份data/backups/before-project-workspace-20261014-213229.db；构建frontend/dist，重启准确匹配项目命令的8000进程，启动原本未运行的8002 DeepWiki服务。无新增schema/migration，用户历史保留。首页/新index-DTgmitkU.js、DeepWiki/models/config HTTP200；OpenAPI确认新会话入口、生成API移除和原始prepare/search就绪。日志data/server-project.*.log、deepwiki-project.*.log；本机服务启动不是远端部署。
+- 视觉验证：离线浏览器浮窗/目录布局和手机截图已检查；Codex browser-client因本机桥接不可用无法直接操控当前内嵌页面，使用现有仓库Playwright完成交互验证，已请求打开新版页面。真实模型问答/优化内容质量、实际索引覆盖与模型时延未验证；本轮无付费调用、未提高新向量预算。不以服务HTTP200或离线fixture证明真实回答质量。
+- 已同步AGENTS、README、PRODUCT、architecture、DECISIONS、BACKLOG、memory/README及.env.example。恢复命令保持主服务标准uvicorn，DeepWiki为data/deepwiki-venv/Scripts/python -m uvicorn api.main:app（工作目录data/deepwiki-open，8002）。刷新http://127.0.0.1:8000/即可使用新版；下一步由用户实际阅读、提出问题，真实调用由用户界面主动发起。
+
+以下为旧产品阶段交接历史，不代表简历功能仍可执行。
+
+---
+
 # 当前交接：讨论记忆MVP与共享源码调查（2026-10-14）
 
 ## 2026-10-14 GitHub同步记录

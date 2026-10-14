@@ -7,9 +7,10 @@ from sqlalchemy import create_engine, event, String, Text, Integer, ForeignKey, 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 load_dotenv()
-DATA = Path(os.getenv('REPOCAREER_DATA', './data')).resolve()
+DATA = Path((os.getenv('REPOINSIGHT_DATA') or os.getenv('REPOCAREER_DATA', './data'))).resolve()
 DATA.mkdir(parents=True, exist_ok=True)
-engine = create_engine(f'sqlite:///{DATA / "repocareer.db"}', connect_args={'check_same_thread': False, 'timeout': 20})
+DB_FILE = DATA / ('repocareer.db' if (DATA/'repocareer.db').exists() and not (DATA/'repoinsight.db').exists() else 'repoinsight.db')
+engine = create_engine(f'sqlite:///{DB_FILE}', connect_args={'check_same_thread': False, 'timeout': 20})
 @event.listens_for(engine, 'connect')
 def configure(conn, _):
     # Disable sqlite3 legacy transaction control: SELECT must share one snapshot

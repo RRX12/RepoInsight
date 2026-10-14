@@ -1,4 +1,4 @@
-name: RepoCareer checks
+name: RepoInsight checks
 
 'on':
   push:

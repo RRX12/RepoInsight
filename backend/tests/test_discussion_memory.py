@@ -246,13 +246,13 @@ def test_source_observation_requires_code_provenance(client,wid):
 
 def test_actual_model_envelope_budget_and_output_reserve(monkeypatch):
     import httpx
-    from backend.app.resume_support import WritingModel
+    from backend.app.model_support import ProjectModel
     from backend.app.providers import ProviderError
     monkeypatch.setenv('RESUME_MODEL_API_KEY','offline-only')
     seen=[]
     def reply(req):
         seen.append(json.loads(req.content));return httpx.Response(200,json={'choices':[{'message':{'content':'{}'}}]})
-    model=WritingModel(httpx.MockTransport(reply))
+    model=ProjectModel(httpx.MockTransport(reply))
     try:
         with pytest.raises(ProviderError,match='预算'):model.request('x'*300,stage='DISCUSSION_PLAN',input_budget=200,output_budget=2000,system_instruction='只讨论')
         assert seen==[]

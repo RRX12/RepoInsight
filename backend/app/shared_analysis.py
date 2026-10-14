@@ -4,11 +4,11 @@ import os
 import threading
 from pathlib import Path
 from pydantic import Field,model_validator
-from .resume_contract import Strict,Requirement,Investigation,Discovery,Verification,GenerationContext,VERSION,validate_discovery,check_claims,Analysis,ReferenceRepair
-from .resume_revision import apply_reference_patches,discard_unlinked_card_details
+from .analysis_contract import Strict,Requirement,Investigation,Discovery,Verification,GenerationContext,VERSION,validate_discovery,check_claims,Analysis,ReferenceRepair
+from .analysis_revision import apply_reference_patches,discard_unlinked_card_details
 from .project_inputs import ProjectValue,validate_product
-from .resume_support import cache_directory
-from .resume_harness import digest
+from .model_support import cache_directory
+from .analysis_harness import digest
 from .source_reader import SourceEvidence,resolved
 from .code_retrieval import CodeRetrieval
 from .providers import ProviderError
@@ -88,7 +88,7 @@ def get_or_build_analysis(snapshot,material,ctx,reader,call,emit,*,model='config
                 check();uploaded[path]=reader.read_document(material['repo'],ctx.commit_sha,path)
             manifest=retriever.prepare(material['repo'],ctx.commit_sha,int(os.getenv('CODE_INDEX_NEW_VECTOR_BUDGET','0')),uploaded_files=uploaded)
         else:manifest=retriever.prepare(material['repo'],ctx.commit_sha,int(os.getenv('CODE_INDEX_NEW_VECTOR_BUDGET','0')))
-        identity={'workspace_id':ctx.workspace_id,'snapshot_id':ctx.snapshot_id,'revision':ctx.commit_sha,'index':manifest,'jd':material.get('jd',''),'role':ctx.role,'dimensions':ctx.target_dimensions,'corrections':material.get('project_corrections',[]),'version':VERSION,'jd_plan_version':'source-ids-v1','model':model,'templates':digest([(p.name,p.read_text(encoding='utf-8')) for p in sorted((Path(__file__).resolve().parents[1]/'prompts/resume'/name) for name in ('common.md','technical_investigation.md'))])}
+        identity={'workspace_id':ctx.workspace_id,'snapshot_id':ctx.snapshot_id,'revision':ctx.commit_sha,'index':manifest,'jd':material.get('jd',''),'role':ctx.role,'dimensions':ctx.target_dimensions,'corrections':material.get('project_corrections',[]),'version':VERSION,'jd_plan_version':'source-ids-v1','model':model,'templates':digest([(p.name,p.read_text(encoding='utf-8')) for p in sorted((Path(__file__).resolve().parents[1]/'prompts/analysis'/name) for name in ('common.md','technical_investigation.md'))])}
         ident=digest(identity);path=cache_directory()/'shared'/ctx.workspace_id/(ident+'.json')
         with _lock:
             check()
@@ -98,7 +98,7 @@ def get_or_build_analysis(snapshot,material,ctx,reader,call,emit,*,model='config
                 validate_discovery(pack.discovery,{e.id:e for e in pack.evidence},pack.target.requirements,ctx,{})
                 emit('SHARED_ANALYSIS','reused_analysis',{'analysis_pack_id':ident,'current_usage':None});return pack
             tree=reader.list_tree(material['repo'],ctx.commit_sha);paths=set(tree['paths']);evidence={};reads=[];chars=0;gaps=[]
-            max_files=min(16,max(1,int(os.getenv('RESUME_SOURCE_FILES','12'))))
+            max_files=min(16,max(1,int((os.getenv('PROJECT_SOURCE_FILES') or os.getenv('RESUME_SOURCE_FILES','12')))))
             read_paths=set()
             def add(e):
                 nonlocal chars
@@ -177,7 +177,7 @@ def extend_analysis(pack,feedback,material,ctx,reader,call,emit,check_active=Non
     check=check_active or (lambda:None);check()
     owned=retriever is None;retriever=retriever or CodeRetrieval(check_active=check,max_queries=4)
     evidence={e.id:e for e in pack.evidence};paths={e.path for e in pack.evidence};chars=sum(len(e.excerpt) for e in pack.evidence)
-    max_files=min(16,max(1,int(os.getenv('RESUME_SOURCE_FILES','12'))));reads=list(pack.reads);gaps=[]
+    max_files=min(16,max(1,int((os.getenv('PROJECT_SOURCE_FILES') or os.getenv('RESUME_SOURCE_FILES','12')))));reads=list(pack.reads);gaps=[]
     tree=set(reader.list_tree(material['repo'],ctx.commit_sha)['paths'])
     def add(e):
         nonlocal chars
@@ -203,7 +203,7 @@ def extend_analysis(pack,feedback,material,ctx,reader,call,emit,check_active=Non
                     gaps.append('补读失败：'+path+' / '+e.code)
         updated=call('SYNTHESIZE',Analysis,{'previous':pack.discovery.model_dump(),'product':pack.product.model_dump(),'requirements':pack.target.model_dump(),'feedback':[f.model_dump() for f in feedback],'sources':[e.model_dump() for e in evidence.values()]},'仅依据新增证据补全缺口或发现候选。不原地修改旧事实陈述；纠正用新ID和supersedes_claim_id，主题拆分/合并用supersedes_candidate_ids。未知留缺口；不再请求补读。纯项目归属，不引入个人贡献。')
         discovery=Discovery.model_validate(updated.model_dump(exclude={'next_reads','confirmed_flow','unresolved_questions'}))
-        from .resume_revision import discovery_transition
+        from .analysis_revision import discovery_transition
         history=discovery_transition(pack.discovery,discovery,evidence)
         validate_discovery(discovery,evidence,pack.target.requirements,ctx,{},verified=False)
         checked=call('CLAIM_VERIFY_INCREMENTAL',verification_schema(discovery.claims,evidence,ctx),{'claims':[{k:v for k,v in c.model_dump().items() if k in ('id','statement','evidence_ids')} for c in discovery.claims],'sources':[e.model_dump() for e in evidence.values()]},'独立核验，不改变id或statement；源码存在不代表集成/测试通过，不推断个人贡献。')

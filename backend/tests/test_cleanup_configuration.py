@@ -3,21 +3,21 @@ import runpy
 from pathlib import Path
 import httpx
 import pytest
-from backend.app.resume_support import WritingModel, cache_directory
-from backend.app.resume_harness import Harness
+from backend.app.model_support import ProjectModel, cache_directory
+from backend.app.analysis_harness import Harness
 
 
-def test_writer_model_config_is_independent_of_deepwiki(monkeypatch,tmp_path):
+def test_project_model_config_is_independent_of_deepwiki(monkeypatch,tmp_path):
     monkeypatch.setenv('RESUME_MODEL_ENV_FILE',str(tmp_path/'absent.env'))
     monkeypatch.setenv('RESUME_MODEL_API_KEY','fixture-key')
     monkeypatch.setenv('RESUME_MODEL_BASE_URL','https://fixture/')
     monkeypatch.setenv('DEEPWIKI_MODEL','ollama-only-model')
     monkeypatch.delenv('RESUME_MODEL',raising=False)
-    model=WritingModel(transport=httpx.MockTransport(lambda r:httpx.Response(500)))
+    model=ProjectModel(transport=httpx.MockTransport(lambda r:httpx.Response(500)))
     assert model.model=='deepseek-v4-pro' and model.base=='https://fixture'
     model.close()
     monkeypatch.setenv('RESUME_MODEL','explicit-model')
-    model=WritingModel(transport=httpx.MockTransport(lambda r:httpx.Response(500)))
+    model=ProjectModel(transport=httpx.MockTransport(lambda r:httpx.Response(500)))
     assert model.model=='explicit-model'
     model.close()
 
@@ -31,13 +31,13 @@ def test_cache_override_and_explicit_stage_protocol(monkeypatch,tmp_path):
     def handle(request):
         requests.append(json.loads(request.content))
         return httpx.Response(200,json={'choices':[{'message':{'content':'{}'}}]})
-    model=WritingModel(transport=httpx.MockTransport(handle))
+    model=ProjectModel(transport=httpx.MockTransport(handle))
     try:
         # A text edit cannot switch the production format off or change the stage budget.
-        model.request('arbitrary text without schema',stage='WRITE',json_output=True)
-        Harness(model,structured_output=True).call('WRITE\ntext without schema')
-        assert all(r['response_format']=={'type':'json_object'} and r['max_tokens']==5000 for r in requests)
-        assert all(u['stage']=='WRITE' for u in model.usage)
+        model.request('arbitrary text without schema',stage='INVESTIGATE',json_output=True)
+        Harness(model,structured_output=True).call('INVESTIGATE\ntext without schema')
+        assert all(r['response_format']=={'type':'json_object'} and r['max_tokens']==12000 for r in requests)
+        assert all(u['stage']=='INVESTIGATE' for u in model.usage)
     finally:model.close()
 
 

@@ -1,4 +1,4 @@
-"""Deterministic discovery evolution and review reporting, without model/client state."""
+"""Deterministic discovery evolution and reference repair, without model/client state."""
 from .providers import ProviderError
 
 def restore_verification_identity(parsed, original_claims):
@@ -23,18 +23,18 @@ def discovery_transition(previous, updated, evidence):
     old={c.id:c for c in previous.claims};new={c.id:c for c in updated.claims}
     old_cards={c.candidate_id:c for c in previous.candidates};new_cards={c.candidate_id:c for c in updated.candidates}
     if len(new)!=len(updated.claims) or len(new_cards)!=len(updated.candidates):
-        raise ProviderError('增量发现ID重复','resume_contract')
+        raise ProviderError('增量发现ID重复','analysis_contract')
     replaced={}
     for claim in updated.claims:
         if claim.id in old and claim.statement!=old[claim.id].statement:
-            raise ProviderError('旧事实陈述不能原地修改；使用新ID和替代关联','resume_contract')
+            raise ProviderError('旧事实陈述不能原地修改；使用新ID和替代关联','analysis_contract')
         if claim.id in old and claim.supersedes_claim_id!=old[claim.id].supersedes_claim_id:
-            raise ProviderError('不能改写事实历史关联','resume_contract')
+            raise ProviderError('不能改写事实历史关联','analysis_contract')
         if claim.supersedes_claim_id and claim.id not in old:
             if claim.id in old or claim.supersedes_claim_id not in old:
-                raise ProviderError('事实替代关联必须指向上一版事实','resume_contract')
+                raise ProviderError('事实替代关联必须指向上一版事实','analysis_contract')
             if not claim.evidence_ids or any(e not in evidence for e in claim.evidence_ids):
-                raise ProviderError('事实纠正缺少可追溯证据','resume_contract')
+                raise ProviderError('事实纠正缺少可追溯证据','analysis_contract')
             replaced.setdefault(claim.supersedes_claim_id,[]).append(claim.id)
     replacements={};reference_expansions=[];candidate_updates=[]
     for card in updated.candidates:
@@ -52,19 +52,19 @@ def discovery_transition(previous, updated, evidence):
             reference_expansions.append({'candidate_id':card.candidate_id,'claim_ids':additions})
         if card.candidate_id in old_cards:
             if card.supersedes_candidate_ids!=old_cards[card.candidate_id].supersedes_candidate_ids:
-                raise ProviderError('不能改写候选历史关联','resume_contract')
+                raise ProviderError('不能改写候选历史关联','analysis_contract')
             continue
         for ident in card.supersedes_candidate_ids:
             if ident not in old_cards or card.candidate_id in old_cards:
-                raise ProviderError('候选拆分/替代必须使用新ID关联上一版','resume_contract')
+                raise ProviderError('候选拆分/替代必须使用新ID关联上一版','analysis_contract')
             replacements.setdefault(ident,[]).append(card.candidate_id)
     if set(old_cards)-set(new_cards)-set(replacements):
-        raise ProviderError('增量发现丢失原候选；需要显式替代关联','resume_contract')
+        raise ProviderError('增量发现丢失原候选；需要显式替代关联','analysis_contract')
     retired=[]
     for ident in set(old)-set(new)-set(replaced):
         owners={c.candidate_id for c in previous.candidates if ident in c.claim_ids}
         if not owners or not owners<=set(replacements) or any(ident in c.claim_ids for c in updated.candidates):
-            raise ProviderError('增量发现丢失原事实；需要显式替代关联','resume_contract')
+            raise ProviderError('增量发现丢失原事实；需要显式替代关联','analysis_contract')
         # A whole-topic replacement may retire its old claims without pretending
         # to know a one-to-one semantic equivalence. Preserve the full old version.
         retired.append({'claim_id':ident,'former_candidate_ids':sorted(owners),
@@ -73,45 +73,7 @@ def discovery_transition(previous, updated, evidence):
             'candidate_updates':candidate_updates,'explicit_reference_expansions':reference_expansions,
             'retired_claims':retired,
             'added_claim_ids':sorted(set(new)-set(old)),'added_candidate_ids':sorted(set(new_cards)-set(old_cards))}
-
-def fact_gate(issues, rejected, reviews, final_model_reviewed):
-    """Contract checks do not certify semantic accuracy of an unreviewed revision."""
-    failures=list(issues)
-    failures.extend('正文已移除不安全内容：'+str(r.get('id',r.get('part',''))) for r in rejected)
-    pending=[f for review in reviews for role in review['perspectives'] for f in role['feedback']
-             if f['category'] in ('needs_evidence','fact_attribution','mechanism_missing')]
-    return {'status':'failed' if failures else 'pending' if pending or not final_model_reviewed else 'passed',
-            'issues':failures,'unresolved_feedback':pending,
-            'scope':'程序契约及本次模型审查，不代表人工事实认证',
-            'final_semantic_reviewed':final_model_reviewed}
-
-SCORE_WEIGHTS={'role_fit':25,'engineering_depth':30,'important_coverage':20,'project_spine':15,'readability':10}
-
-def quality_score(dimensions, independent_benchmark=False):
-    """For explicit evaluator/human input only. Never invent ratings from keywords."""
-    if set(dimensions)!=set(SCORE_WEIGHTS):raise ValueError('需要五项独立评分')
-    for value in dimensions.values():
-        if not isinstance(value,dict) or type(value.get('score')) not in (int,float) or not 0<=value['score']<=4 or not value.get('reason'):
-            raise ValueError('每项需0–4分及依据')
-    score=sum(dimensions[k]['score']*weight/4 for k,weight in SCORE_WEIGHTS.items())
-    return {'weighted_score':score,'dimensions':dimensions,'provisional':not independent_benchmark,
-            'threshold_met':score>=75 and dimensions['role_fit']['score']>=3 and dimensions['engineering_depth']['score']>=3,
-            'fact_gate_independent':True}
-
-def reviewed_score(reviews, final_model_reviewed):
-    dimensions={}
-    for review in reviews:
-        for role in review['perspectives']:
-            owned=('role_fit','project_spine','readability') if role['perspective']=='hr' else ('engineering_depth','important_coverage')
-            dimensions.update({k:v for k,v in role.get('scores',{}).items() if k in owned})
-    if set(dimensions)!=set(SCORE_WEIGHTS):
-        return {'status':'not_evaluated','reason':'角色评分不完整，不以通过标志或测试代替分数','dimensions':dimensions}
-    return {'status':'provisional_model_review',**quality_score(dimensions),
-            'applies_to':'final_draft' if final_model_reviewed else 'first_draft',
-            'note':'同源模型自评；缺独立完整性基准和人工校准，不证明质量达标'}
-
-
-from .resume_contract import Discovery
+from .analysis_contract import Discovery
 
 def discard_unlinked_card_details(discovery):
     """Discard unsupported optional annotations; never guess evidence-to-claim links."""

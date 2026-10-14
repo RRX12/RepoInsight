@@ -25,13 +25,13 @@ async def plan_turn(wid,cid,ticket):
     if not chosen and re.search('这个|那.*以后|它',content):plan.clarification='你指的是哪个方案、文件或机制？'
     # Only eventful explicit memory language requests one parse; no rolling summary.
     if not re.search('记住|更正|纠正|继续研究|以后都|整个项目|补充约束',content):return plan
-    from .resume_support import WritingModel
+    from .model_support import ProjectModel
     payload={'message_id':ticket['user']['id'],'message':content,'focus':focus,'memories':view['memories'],'default_plan':plan.model_dump()}
     payload['memories']=[m for m in payload['memories'] if m['status']=='active']
     prompt='DISCUSSION_PLAN\n'+RULES+'\n识别值得跨轮保留的显式约束、更正、方案态度或未决问题。user_explicit必须逐字引用用户原话。只讨论，不更新业务状态。target_id仅来自给定记忆；不臆造源码观察；工作区范围必须有用户明确授权。不要因讨论过就记录已实现。\n'+json.dumps(payload,ensure_ascii=False)+'\nJSON schema:'+json.dumps(Plan.model_json_schema(),ensure_ascii=False)
     if tokens(prompt)>budget('CHAT_INPUT_TOKEN_BUDGET',16000):raise HTTPException(422,'记忆解析输入超预算，请缩小问题或清理无关记忆')
     def run():
-        model=WritingModel()
+        model=ProjectModel()
         try:
             result=Plan.model_validate(json.loads(model.request(prompt,stage='DISCUSSION_PLAN',input_budget=min(budget('CHAT_INPUT_TOKEN_BUDGET',16000),budget('CHAT_MODEL_WINDOW',32768)-budget('CHAT_OUTPUT_TOKEN_RESERVE',2000)-1024),output_budget=budget('CHAT_OUTPUT_TOKEN_RESERVE',2000),system_instruction=RULES)))
             ticket['planner_usage']=model.usage
@@ -89,6 +89,8 @@ async def answer_stream(wid,cid,body,ticket):
                 if body.page_id:
                     page=require(s,Run,run_id,wid).result['wiki']['generated_pages'][body.page_id]
                     evidence['wiki:'+body.page_id]={'id':'wiki:'+body.page_id,'kind':'wiki','source_revision':'unknown','title':page.get('title'),'excerpt':page.get('content',''),'run_id':run_id}
+        if ticket.get('direction_context'):
+            direction=ticket['direction_context'];evidence['direction:'+direction['id']]={**direction,'id':'direction:'+direction['id'],'source_revision':'proposal-v'+str(direction['details'].get('version','unknown'))}
         payload,log=assemble(wid,cid,ticket,plan,evidence);log['source_lookup_count']=int(plan.source_lookup_needed and not plan.clarification);log['source_gaps']=gaps;log['planner_usage']=ticket.get('planner_usage');log['planner_call_count']=int('planner_usage' in ticket)
         if plan.clarification:
             full=plan.clarification;yield wiki_chat.event(delta=full)
@@ -150,7 +152,7 @@ class DiscussionState(TypedDict, total=False):
 async def plan_node(state):
     wid,cid,body,ticket=(state[k] for k in ('wid','cid','body','ticket'))
     prohibited=any(w in body.content for w in ('生成简历','修改JD','修改指标','标记已实施'))
-    plan=Plan(clarification='此处仅讨论项目；生成简历或修改业务信息请使用独立按钮/表单。') if prohibited else await plan_turn(wid,cid,ticket)
+    plan=Plan(clarification='此处仅讨论项目与优化取舍；简历生成功能已移除，修改项目业务信息请使用独立按钮/表单。') if prohibited else await plan_turn(wid,cid,ticket)
     store.commit_explicit(wid,cid,ticket,plan)
     if not store.active(wid,cid,ticket):raise HTTPException(409,'会话已停止或更正')
     return {'plan':plan,'ticket':ticket}

@@ -40,7 +40,7 @@ def collect_project(s,wid):
     from fastapi import HTTPException
     from .db import Workspace,Snapshot,Evidence
     from .memory import require,scoped,latest_jd
-    from .resume_harness import digest
+    from .analysis_harness import digest
     w=require(s,Workspace,wid);jd=latest_jd(s,wid);snaps=scoped(s,Snapshot,wid)
     if not snaps:raise HTTPException(422,'请先保存仓库链接')
     snap=snaps[-1]

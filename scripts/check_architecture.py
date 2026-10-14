@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 from importlib.util import resolve_name
 
-CONTRACTS = {'schemas', 'architecture_schema', 'resume_contract', 'interaction_contract','discussion_contract'}
+CONTRACTS = {'schemas', 'architecture_schema', 'analysis_contract', 'interaction_contract','discussion_contract'}
 ORCHESTRATION = {'main', 'artifact_service', 'analysis', 'agent', 'memory',
                  'task_lifecycle', 'resume_writer', 'resume_quality', 'interaction_service','shared_analysis','optimization_review','discussion_service','discussion_memory','discussion_context'}
 BASELINE = 'backend.app.resume_legacy'

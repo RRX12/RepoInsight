@@ -7,7 +7,7 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.goto('http://127.0.0.1:8000');
-await page.getByRole('link',{name:/RepoCareer/}).waitFor();
+await page.getByRole('link',{name:/RepoInsight/}).waitFor();
 await page.screenshot({path:new URL('../data/screenshots/desktop.png',import.meta.url).pathname.replace(/^\//,''),fullPage:true});
 await page.setViewportSize({width:390,height:844});
 await page.screenshot({path:new URL('../data/screenshots/mobile.png',import.meta.url).pathname.replace(/^\//,''),fullPage:true});

@@ -5,7 +5,7 @@ from sqlalchemy import select,update,text,delete
 from fastapi import HTTPException
 from .db import DATA,Session,Conversation,Message,MemoryEvent,Workspace,Snapshot,uid,now,asdict
 from .memory import require
-from .resume_harness import digest
+from .analysis_harness import digest
 from .discussion_contract import Plan,MemoryChange
 
 # Single-process MVP: serialize only short storage transactions, never model I/O.
@@ -107,10 +107,17 @@ def change_memory(wid,cid,body):
         result=apply_memory(s,c,data,m,[mid],[],version(s,wid));receipts[body.request_id]=fingerprint;cas(s,c,body.expected_revision,data)
         return {'memory':result,'revision':body.expected_revision+1}
 
+def direction_context(s,wid,iid):
+    from .db import Improvement
+    if not iid:return None
+    item=require(s,Improvement,iid,wid)
+    if item.details.get('deleted'):raise HTTPException(409,'方向已删除，请选择其他方向')
+    return {'id':item.id,'kind':'optimization_proposal','title':item.details.get('title',item.details.get('direction','优化方向')),'details':{k:item.details[k] for k in ('problem','business_problem','proposal','current_design','alternatives','tradeoffs','risks','validation','validation_plan','assumptions','version','implementation') if k in item.details},'status':item.status,'fact_boundary':'优化方向是讨论方案，不能视为已经实现；完成声明只代表用户报告'}
+
 @serialized
 def begin(wid,cid,body):
     with Session.begin() as s:
-        c=get(s,wid,cid);rows=messages(s,cid,wid);fingerprint=digest(body.model_dump(exclude={'expected_revision'}))
+        c=get(s,wid,cid);direction=direction_context(s,wid,body.improvement_id);rows=messages(s,cid,wid);fingerprint=digest(body.model_dump(exclude={'expected_revision'}))
         old=next((m for m in rows if m.role=='user' and m.proposal.get('discussion',{}).get('request_id')==body.request_id),None)
         if old:
             meta=old.proposal['discussion']
@@ -129,7 +136,7 @@ def begin(wid,cid,body):
             if len(content)>2000:raise HTTPException(422,'请将持续约束缩小到2000字以内')
             apply_memory(s,c,data,dict(kind=kind,scope='workspace' if match[1]=='项目约束' else 'conversation',subject_key='explicit:'+digest(content)[:24],content=content,origin='user_explicit',source_message_ids=[mid],evidence_refs=[],source_revision='unknown',action='ADD'),[mid],[],version(s,wid))
         cas(s,c,body.expected_revision,data)
-        return {'replay':False,'user':asdict(user),'revision':body.expected_revision+1,'source_revision':version(s,wid),'repo_identity':identity(s,wid),'workspace_memory_version':workspace_memory_version(s,c)}
+        return {'replay':False,'user':asdict(user),'revision':body.expected_revision+1,'source_revision':version(s,wid),'repo_identity':identity(s,wid),'workspace_memory_version':workspace_memory_version(s,c),'direction_context':direction,'direction_fingerprint':digest(direction),'improvement_id':body.improvement_id}
 
 @serialized
 def finish(wid,cid,ticket,status,answer='',plan=None,load_log=None,evidence=None):
@@ -140,6 +147,9 @@ def finish(wid,cid,ticket,status,answer='',plan=None,load_log=None,evidence=None
         if user is None:return False
         meta=dict(user.proposal['discussion'])
         if meta['status']!='pending':return False
+        try:direction_current=direction_context(s,wid,ticket.get('improvement_id'))
+        except HTTPException:direction_current={'unavailable':True}
+        if ticket.get('improvement_id') and digest(direction_current)!=ticket.get('direction_fingerprint'):status='cancelled';answer=''
         if c.revision!=ticket['revision'] or version(s,wid)!=ticket['source_revision'] or identity(s,wid)!=ticket['repo_identity'] or workspace_memory_version(s,c)!=ticket['workspace_memory_version']:status='cancelled';answer=''
         data=copy.deepcopy(c.data)
         if status=='completed':
@@ -247,6 +257,9 @@ def commit_explicit(wid,cid,ticket,plan):
     if not candidates:return
     with Session.begin() as s:
         c=get(s,wid,cid)
+        try:direction_current=direction_context(s,wid,ticket.get('improvement_id'))
+        except HTTPException:direction_current={'unavailable':True}
+        if ticket.get('improvement_id') and digest(direction_current)!=ticket.get('direction_fingerprint'):status='cancelled';answer=''
         if c.revision!=ticket['revision']:raise HTTPException(409,'会话已变化')
         data=copy.deepcopy(c.data);content=ticket['user']['content']
         if any(m.scope=='topic' for m in candidates):set_focus(data,plan)

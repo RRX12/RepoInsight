@@ -10,6 +10,7 @@ class Question(Strict):
     content:str=Field(min_length=1,max_length=20000)
     run_id:str|None=None
     page_id:str|None=None
+    improvement_id:str|None=None
 class MemoryChange(Strict):
     expected_revision:int=Field(ge=0)
     request_id:str=Field(min_length=1,max_length=100)

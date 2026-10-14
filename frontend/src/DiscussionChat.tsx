@@ -1,7 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import Markdown from 'react-markdown';
 type Row=Record<string,any>;
-export default function DiscussionChat({wid,surface,runId,pageId,disabled=false}:{wid:string,surface:'wiki'|'discussion',runId?:string,pageId?:string,disabled?:boolean}){
+export default function DiscussionChat({wid,surface,runId,pageId,improvementId,disabled=false}:{wid:string,surface:'wiki'|'discussion',runId?:string,pageId?:string,improvementId?:string,disabled?:boolean}){
  const [session,setSession]=useState<Row|null>(null),[question,setQuestion]=useState(''),[partial,setPartial]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [edit,setEdit]=useState<Row|null>(null),[note,setNote]=useState(''),[offset,setOffset]=useState(0);
  const current=useRef<Row|null>(null),abort=useRef<AbortController|null>(null),request=useRef(''),alive=useRef(true);
@@ -9,11 +9,11 @@ export default function DiscussionChat({wid,surface,runId,pageId,disabled=false}
  async function api(url:string,method='GET',body?:Row){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error?.message||'请求失败');return d;}
  async function reload(cid:string,start=offset){const s=await api(base+'/'+cid+'?offset='+start);if(alive.current){current.current=s;setSession(s);}return s;}
  async function open(){const s=await api(base,'POST',{surface});if(!alive.current)return;const first=await reload(s.id,0);const start=Math.max(0,first.message_count-50);setOffset(start);if(start)await reload(s.id,start);}
- useEffect(()=>{alive.current=true;open().catch(e=>setError(e.message));return()=>{alive.current=false;abort.current?.abort();};},[wid,surface]);
+ useEffect(()=>{alive.current=true;open().catch(e=>setError(e.message));return()=>{alive.current=false;abort.current?.abort();const cid=current.current?.id,id=request.current;if(cid&&id)void fetch(base+'/'+cid+'/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:id}),keepalive:true}).catch(()=>{});};},[wid,surface]);
  const pending=session?.pending_requests?.[0];
  async function stop(){const s=current.current;if(!s)return;const id=request.current||pending;abort.current?.abort();if(id)await api(base+'/'+s.id+'/cancel','POST',{request_id:id});await reload(s.id);}
  async function send(){const s=current.current;if(!s||busy||!question.trim())return;setBusy(true);setError('');setPartial('');const ctl=new AbortController();abort.current=ctl;request.current=crypto.randomUUID();let full='',done=false;
-  try{const r=await fetch(base+'/'+s.id+'/turns',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,body:JSON.stringify({request_id:request.current,expected_revision:s.revision,content:question,run_id:runId||null,page_id:pageId||null})});if(!r.ok){const d=await r.json();throw Error(d.error?.message||'发送失败');}
+  try{const r=await fetch(base+'/'+s.id+'/turns',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,body:JSON.stringify({request_id:request.current,expected_revision:s.revision,content:question,run_id:runId||null,page_id:pageId||null,improvement_id:improvementId||null})});if(!r.ok){const d=await r.json();throw Error(d.error?.message||'发送失败');}
    const reader=r.body!.getReader(),decoder=new TextDecoder();let buffer='';
    const consume=(line:string)=>{if(!line.trim())return;const e=JSON.parse(line);if(e.error)throw Error(e.error);if(e.delta){full+=e.delta;if(alive.current)setPartial(full);}if(e.done)done=true;};
    while(true){const p=await reader.read();buffer+=decoder.decode(p.value,{stream:!p.done});const lines=buffer.split('\n');buffer=lines.pop()||'';lines.forEach(consume);if(p.done)break;}consume(buffer);if(!done)throw Error('回答未完成，部分内容不会进入后续上下文');if(alive.current)setQuestion('');
@@ -22,7 +22,7 @@ export default function DiscussionChat({wid,surface,runId,pageId,disabled=false}
  }
  async function change(m:Row,action:string,content:string){try{setError('');await api(base+'/'+session!.id+'/memory','POST',{request_id:crypto.randomUUID(),expected_revision:session!.revision,kind:m.kind,scope:m.scope,subject_key:m.subject_key,content,target_id:m.id,action});setEdit(null);await reload(session!.id);}catch(e){setError((e as Error).message);}}
  async function clear(project=false){if(!window.confirm(project?'删除本项目所有讨论、约束和笔记？业务数据不会删除。':'删除当前会话及派生记忆？此操作不能恢复。'))return;try{abort.current?.abort();await api(project?'/api/workspaces/'+wid+'/discussion-memory':base+'/'+session!.id,'DELETE');setPartial('');setEdit(null);await open();}catch(e){setError((e as Error).message);}}
- return <div className="discussion-chat"><p>对话保存在本地，刷新后可恢复。只讨论项目，不自动修改 JD、贡献或简历。默认保留原文，可随时删除。</p>
+ return <div className="discussion-chat"><p>对话保存在本地，刷新后可恢复。只讨论项目与方案，不自动修改优化方向或实施状态。默认保留原文，可随时删除。</p>
  {error&&<p role="alert">{error}</p>}{!session&&<p>正在恢复会话…</p>}
  {session&&<><small>当前主题：{session.data.topics?.find((t:Row)=>t.id===session.data.active_topic_id)?.title||'尚未确定'} · 最近最多10轮，受预算限制</small>
  <div className="messages">{session.messages.filter((m:Row)=>m.proposal?.discussion?.status!=='memory_edit').map((m:Row)=><article key={m.id}><strong>{m.role==='user'?'你':'项目助手'}</strong><Markdown>{m.content}</Markdown>{['pending','failed','cancelled','legacy'].includes(m.proposal?.discussion?.status)&&<small>{({pending:'等待回答，可停止后重试',failed:'回答失败；已保存输入',cancelled:'已取消',legacy:'旧入口记录，仅供查看'} as Row)[m.proposal.discussion.status]}</small>}{m.proposal?.discussion?.load_log&&<details><summary>本轮加载记录</summary><pre>{JSON.stringify(m.proposal.discussion.load_log,null,2)}</pre></details>}</article>)}</div>

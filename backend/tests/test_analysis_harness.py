@@ -1,6 +1,6 @@
 import json
 import pytest
-from backend.app.resume_harness import Harness
+from backend.app.analysis_harness import Harness
 from backend.app.providers import ProviderError
 
 def test_reported_token_budget_stops_next_call(monkeypatch):

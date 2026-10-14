@@ -1,10 +1,10 @@
 # 项目讨论记忆
 
-本地实现完成；后端221项、浏览器11项及类型/构建/架构检查通过，离线回归结果见下；真实模型质量尚未验证。目标规格见[spec.md](spec.md)，当前恢复记录见[../STATUS.md](../STATUS.md)。规格保留原文“待实现”标记作为输入基线，不代表当前验证结论。
+项目讨论版已本地加载；当前整套138后端、9浏览器及类型/构建/架构检查通过。原讨论规格验证历史与离线结果见下；真实模型质量尚未验证。目标规格见[spec.md](spec.md)，当前恢复记录见[../STATUS.md](../STATUS.md)。规格保留原文“待实现”标记作为输入基线，不代表当前验证结论。
 
 ## 使用
 
-用户页“向项目提问”和后台“讨论区”使用相同能力、独立会话。刷新可恢复；不自动修改JD、指标、贡献、实施状态或简历。原表单和生成按钮保留。
+用户页项目全貌和优化大方向的浮动聊天框使用相同能力、独立wiki/discussion会话。刷新恢复；讨论不自动修改JD、指标、贡献或实施状态。简历生成及编辑入口已移除。拖动标题移动、右下角调整尺寸，放大缩小/收起按钮控制窗口；离开页面主动取消接收并发送取消请求，收起保留会话。
 
 - 普通问题仅保存问答。`约束：只考虑本地部署`记录会话约束；`项目约束：…`明确授权同项目其他会话读取；`讨论笔记：…`和`待解决问题：…`记录讨论态度/未决事项。
 - 自然语言出现“记住、更正、纠正、继续研究、以后都、整个项目、补充约束”时，最多一次结构化解析，与回答调用分开；不每轮生成摘要。解析复用现有写作模型配置，普通问答使用DeepWiki。自动提取的用户条目必须有本轮原话及来源，不能由模型扩权。更正已有笔记也可直接使用界面按钮，无模型请求。
@@ -14,7 +14,7 @@
 
 ## 数据与调用
 
-`DiscussionChat → conversations API → LangGraph(plan/source) → discussion_context → wiki_chat.stream → finish(CAS)`。会话、记忆与消息是SQLite中的唯一真源，没有第二份滚动摘要/检查点。原有源码缓存只存代码，不存讨论内容。源码观察附实际片段/路径/行范围/仓库/SHA，代码版本变化时显示needs_recheck，不用于新版本事实。
+`FloatingChat → DiscussionChat → conversations API → LangGraph(plan/source) → discussion_context → wiki_chat.stream → finish(CAS)`。会话、记忆与消息是SQLite中的唯一真源，没有第二份滚动摘要/检查点。原有源码缓存只存代码，不存讨论内容。源码观察附实际片段/路径/行范围/仓库/SHA，代码版本变化时显示needs_recheck，不用于新版本事实。
 
 路由均在`/api/workspaces/{wid}`下：
 
@@ -22,7 +22,7 @@
 |---|---|
 | POST conversations `{surface}` | 恢复当前wiki/discussion/legacy会话 |
 | GET conversations/{cid}?offset=0&limit=50 | 分页消息、焦点、记忆、pending请求；limit最大100 |
-| POST conversations/{cid}/turns | request_id、expected_revision、content、可选run_id/page_id；NDJSON流 |
+| POST conversations/{cid}/turns | request_id、expected_revision、content、可选run_id/page_id/improvement_id；NDJSON流 |
 | POST conversations/{cid}/cancel | request_id；取消幂等 |
 | POST conversations/{cid}/memory | 显式条目增改/撤回/解决，带revision与request_id |
 | DELETE conversations/{cid} | 删除当前会话及衍生内容 |
@@ -47,3 +47,7 @@
 初次回放：36个允许组装的场景中，约束进入最终上下文A为24/36、B和C为36/36；需要旧历史的4例A/B为0/4、C为4/4；更正状态A为0/2、B/C为2/2。另4个并发/删除场景在每种变体拒绝组装。失败例和每例加载ID/估算量/耗时保留在JSON，不只给平均分。合成样本少，不能据此推断真实用户收益。
 
 未验证：真实DeepWiki服务协议/真实模型提取与回答质量、真实token/端到端延迟；大量历史下SQLite扫描性能；多进程部署（不支持）。本次只在隔离库跑003迁移，未迁移用户生产库。真实A/B/C需相同模型、固定证据、人工盲评回答对象/约束/更正/状态保真/依据，获得一次新的有界付费授权后执行。
+
+## 2026-10-14 优化讨论上下文
+
+点击“讨论此方向”仅发送方向ID，服务端begin读取同工作区未删除Improvement并冻结标题、方案、问题、取舍和状态，作为optimization_proposal进入原预算信封；不是源码事实。finish比对当前方案指纹，方案更正或删除后不保存旧答案。原会话删除/取消/版本CAS和M01–M20保持。模型配置模块现为model_support、通用预算模块为analysis_harness，原RESUME配置兼容但无简历入口。

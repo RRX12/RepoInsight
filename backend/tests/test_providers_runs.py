@@ -26,8 +26,7 @@ def test_no_jd_search_analysis_and_cache(client,wid):
     e=w['evidence'][0]; assert e['snapshot_id']==w['snapshots'][0]['id'] and e['source_ref'].startswith('fixture://')
     i=w['improvements'][0]
     assert client.post('/api/improvements/'+i['id']+'/select',params={'workspace_id':wid}).status_code==200
-    a=client.post(f'/api/workspaces/{wid}/artifacts',json={'type':'task_pack','idempotency_key':'task'}).json()
-    assert '不是已完成贡献' in a['content']
+    assert client.get(f'/api/workspaces/{wid}').json()['contributions']==[]
 def test_snapshot_refresh_stales_previous(client,wid,monkeypatch):
     req={'url':'https://github.com/x/y','demo':True,'idempotency_key':'r'}
     r=client.post(f'/api/workspaces/{wid}/analysis-runs',json=req).json();wait(client,r,wid)
@@ -138,3 +137,10 @@ def test_jd_and_skills_rank_metadata_not_stars():
     g=GitHub(httpx.MockTransport(lambda req:httpx.Response(200,json={'items':items})))
     result=g.search(w,SimpleNamespace(requirements=['Redis']))
     assert result[0]['name']=='x/relevant' and 'Redis' in result[0]['match'] and '两周' in result[0]['constraints']
+
+
+def historical_artifact(wid):
+    from backend.app.db import Session,Artifact,asdict
+    with Session.begin() as s:
+        a=Artifact(workspace_id=wid,type='resume',version=1,content='历史记录',idempotency_key='historical',dependency_ids=[],claims=[],review_status='current')
+        s.add(a);s.flush();return asdict(a)

@@ -1,14 +1,14 @@
 """Architecture recommendations consume verified shared facts, never become facts."""
 import json
 from pydantic import Field
-from .resume_contract import Strict,GenerationContext,VERSION,Feedback
-from .resume_harness import Harness,GUARD,parse_json,digest
-from .resume_support import WritingModel,cache_directory
+from .analysis_contract import Strict,GenerationContext,VERSION,Feedback
+from .analysis_harness import Harness,GUARD,parse_json,digest
+from .model_support import ProjectModel,cache_directory
 from .source_reader import SourceReader
 from .shared_analysis import get_or_build_analysis
 from .architecture_schema import ArchitectureReport,validate_paths
 from .providers import ProviderError
-from .resume_prompts import compose,task_for_stage,validate_configuration
+from .analysis_prompts import compose,task_for_stage,validate_configuration
 
 def report_schema(paths):
     """Expose the actual citation whitelist in every path field of the model schema."""
@@ -35,7 +35,7 @@ class Assessment(Strict):
     evidence_requests:list[Feedback]=Field(default_factory=list,max_length=4)
 
 def generate(snapshot,material,progress,check_active,chat=None,source_reader=None,retriever=None):
-    provider=WritingModel() if chat is None else None;chat=provider or chat
+    provider=ProjectModel() if chat is None else None;chat=provider or chat
     reader=source_reader or SourceReader(material['workspace_id'],snapshot)
     h=Harness(chat,model=provider.base+'|'+provider.model if provider else 'injected',max_calls=12,check_active=check_active,structured_output=True)
     repair_used=False;trace=[]

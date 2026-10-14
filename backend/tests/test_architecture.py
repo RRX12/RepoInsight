@@ -66,7 +66,7 @@ def test_missing_deepwiki_never_falls_back(monkeypatch):
 
 
 def test_analysis_correction_invalidates_resume(client,wid):
-    a=client.post(f'/api/workspaces/{wid}/artifacts',json={'type':'resume','idempotency_key':'a'}).json()
+    a=historical_artifact(wid)
     client.post(f'/api/workspaces/{wid}/evidence',json={'type':'user_statement','excerpt':'已有插件机制，不能声称缺少扩展能力','source_ref':'用户确认的项目分析更正'})
     assert client.get(f'/api/artifacts/{a["id"]}?workspace_id={wid}').json()['review_status']=='needs_review'
 
@@ -77,7 +77,7 @@ def test_github_link_payload_cache_and_switch(client,wid,monkeypatch):
     assert link['commit_sha']=='a'*40
     assert client.post(f'/api/workspaces/{wid}/repository-link',json={'url':'https://github.com/example/document-agent'}).json()['id']==link['id']
     assert client.post(f'/api/workspaces/{wid}/repository-link',json={'url':'http://127.0.0.1/secret'}).status_code==502
-    artifact=client.post(f'/api/workspaces/{wid}/artifacts',json={'type':'resume','idempotency_key':'before-switch'}).json()
+    artifact=historical_artifact(wid)
     switched=client.post(f'/api/workspaces/{wid}/repository-link',json={'url':'https://github.com/example/other'}).json()
     assert switched['id']!=link['id']
     assert client.get(f'/api/artifacts/{artifact["id"]}?workspace_id={wid}').json()['review_status']=='needs_review'
@@ -140,3 +140,10 @@ def test_unresolved_link_preserves_existing_snapshot(client,wid,monkeypatch):
     assert '未保存' in response.json()['error']['message']
     snapshots=client.get(f'/api/workspaces/{wid}').json()['snapshots']
     assert [s['id'] for s in snapshots]==[saved['id']]
+
+
+def historical_artifact(wid):
+    from backend.app.db import Session,Artifact,asdict
+    with Session.begin() as s:
+        a=Artifact(workspace_id=wid,type='resume',version=1,content='历史记录',idempotency_key='historical',dependency_ids=[],claims=[],review_status='current')
+        s.add(a);s.flush();return asdict(a)

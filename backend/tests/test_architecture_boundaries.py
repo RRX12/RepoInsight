@@ -21,14 +21,14 @@ def test_all_import_forms_and_production_bridge_call_are_detected(tmp_path):
 
 
 def test_contract_transitive_dependency_reports_chain_without_importing_code(tmp_path):
-    root=app(tmp_path,{'resume_contract':'from .source_reader import SourceEvidence\n','source_reader':'from .artifact_service import create_artifact\nraise RuntimeError("must not execute")\n','artifact_service':''})
+    root=app(tmp_path,{'analysis_contract':'from .source_reader import SourceEvidence\n','source_reader':'from .artifact_service import create_artifact\nraise RuntimeError("must not execute")\n','artifact_service':''})
     errors=check(root)
     assert len(errors)==1 and 'A02' in errors[0]
-    assert 'resume_contract -> source_reader -> artifact_service' in errors[0]
+    assert 'analysis_contract -> source_reader -> artifact_service' in errors[0]
 
 
 def test_allowed_current_directions_and_eval_are_preserved(tmp_path):
-    root=app(tmp_path,{'schemas':'','architecture_schema':'from .schemas import Strict\n','resume_contract':'from .source_reader import SourceEvidence\n','source_reader':'from .db import DATA\n','db':'','resume_legacy':'from .resume_support import WritingModel\n','resume_support':'from .memory import scoped\n','memory':'from .schemas import Strict\n'})
+    root=app(tmp_path,{'schemas':'','architecture_schema':'from .schemas import Strict\n','analysis_contract':'from .source_reader import SourceEvidence\n','source_reader':'from .db import DATA\n','db':'','resume_legacy':'from .model_support import ProjectModel\n','model_support':'from .memory import scoped\n','memory':'from .schemas import Strict\n'})
     assert check(root)==[]
 
 

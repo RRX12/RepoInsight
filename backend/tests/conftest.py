@@ -25,9 +25,8 @@ def wid(client):
 @pytest.fixture(autouse=True)
 def isolated_writer_sources(request,monkeypatch,tmp_path):
     # Only writer contract tests: run real shared analysis, fake external I/O only.
-    if request.module.__name__.split('.')[-1] not in ('test_resume_quality','test_resume_mechanisms','test_resume_roles_index','test_shared_analysis'):return
+    if request.module.__name__.split('.')[-1] not in ('test_shared_analysis','test_project_flow'):return
     from backend.tests.source_fixture import Reader,Retriever
-    monkeypatch.setattr('backend.app.resume_quality.SourceReader',Reader)
     monkeypatch.setattr('backend.app.shared_analysis.CodeRetrieval',Retriever)
     monkeypatch.setattr('backend.app.shared_analysis.cache_directory',lambda:tmp_path/'analysis')
     monkeypatch.setattr('backend.app.source_reader.SourceReader.resolve_revision',lambda self,repo,ref=None:{'commit_sha':'a'*40,'status':'resolved'})
