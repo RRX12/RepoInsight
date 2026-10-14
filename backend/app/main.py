@@ -58,7 +58,7 @@ def config(): return {'model_mode':'demo' if ModelProvider().demo else 'real','s
 @app.get('/api/workspaces')
 def workspaces(s=Depends(session)): return [asdict(w) for w in s.scalars(select(Workspace).order_by(Workspace.created_at.desc()))]
 @app.post('/api/workspaces')
-def new_workspace(body: WorkspaceInput, s=Depends(session)):
+def new_workspace(body: WorkspaceInput, s=Depends(session,scope='function')):
     w=Workspace(**body.model_dump()); s.add(w); s.flush(); return asdict(w)
 @app.get('/api/workspaces/{wid}')
 def workspace(wid:str,summary:bool=False,s=Depends(session)):
@@ -131,7 +131,7 @@ def add_jd(wid:str,body:TextInput,s=Depends(session)):
     return {**asdict(jd),'diff':{'added':list(set(terms)-set(old.requirements if old else [])),'removed':list(set(old.requirements if old else [])-set(terms))},'note':'只影响新候选/新方案排序与新稿选材；旧计划保留，贡献事实不变。'}
 
 @app.post('/api/workspaces/{wid}/target')
-def update_target(wid:str,body:TargetInput,s=Depends(session)):
+def update_target(wid:str,body:TargetInput,s=Depends(session,scope='function')):
     jd=save_target(s,wid,body.role,body.jd)
     return {'role':body.role,'jd_version_id':jd.id if jd else None,'target_origin':'jd' if body.jd else 'role_inferred'}
 @app.post('/api/workspaces/{wid}/repo-search')

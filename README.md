@@ -19,3 +19,15 @@
 完整离线检查：`.venv/Scripts/python scripts/check.py --e2e`。当前产品、架构、恢复和验证见 docs/PRODUCT.md、docs/architecture.md、docs/STATUS.md；讨论存储和预算见 docs/memory/README.md。
 
 新项目仓库：[RRX12/RepoInsight](https://github.com/RRX12/RepoInsight)。本地目录名为RepoInsight。配置优先REPOINSIGHT_DATA/DEMO/API_TARGET，原REPOCAREER字段兼容现有环境；浏览器旧项目选择自动恢复。新数据库使用repoinsight.db，旧文件可继续读取。
+
+## 首次安装（Windows）
+
+```powershell
+python -m venv .venv
+.venv/Scripts/python -m pip install -r backend/requirements.lock.txt
+pnpm --dir frontend install --frozen-lockfile
+pnpm --dir frontend run build
+.venv/Scripts/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+```
+
+复制.env.example为本地.env并配置DeepWiki服务后才可运行真实分析。Sidecar安装与只读源码扩展步骤见docs/architecture.md；默认检查离线，不包含真实模型内容质量验收。

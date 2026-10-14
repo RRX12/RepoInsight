@@ -26,7 +26,7 @@ def main():
         return 1
     try:
         with tempfile.TemporaryDirectory(prefix='repocareer-check-') as temp:
-            env={**os.environ,'REPOCAREER_DATA':str(Path(temp)/'data'),'REPOCAREER_DEMO':'true','CI':'true'}
+            env={**os.environ,'REPOINSIGHT_DATA':str(Path(temp)/'data'),'REPOINSIGHT_DEMO':'true','CI':'true'}
             run([sys.executable,ROOT/'scripts/check_architecture.py'],ROOT,env)
             run([sys.executable,'-m','pytest','backend/tests','-q'],ROOT,env)
             run([pnpm,'run','typecheck'],ROOT/'frontend',env)

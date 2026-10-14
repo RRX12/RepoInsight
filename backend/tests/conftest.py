@@ -1,8 +1,8 @@
 import os
 import tempfile
 from pathlib import Path
-os.environ['REPOCAREER_DATA']=tempfile.mkdtemp(prefix='repocareer-tests-')
-os.environ['REPOCAREER_DEMO']='true'
+os.environ['REPOINSIGHT_DATA']=tempfile.mkdtemp(prefix='repocareer-tests-')
+os.environ['REPOINSIGHT_DEMO']='true'
 from fastapi.testclient import TestClient
 import pytest
 from backend.app.main import app

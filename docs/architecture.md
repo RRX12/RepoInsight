@@ -48,3 +48,5 @@ DeepWiki 原始检索扩展仍用 scripts/install-deepwiki-retrieval.py --sideca
 当前品牌、包名、文档、启动提示和新本地根目录改为RepoInsight。新SQLite文件为repoinsight.db，旧repocareer.db存在且新文件不存在时兼容读取，避免创建空库；本地旧数据经SQLite backup迁移到新名。浏览器优先repoinsight.workspace，兼容旧repocareer.workspace，用户选择后写新键，新项目清理两键。REPOINSIGHT_DATA/DEMO/API_TARGET优先，REPOCAREER字段只用于旧配置迁移。
 
 既有DeepWiki扩展的/repocareer/code路由、repocareer_raw_index/routes模块及缓存目录属于独立安装协议，继续保留，不因显示品牌改变而破坏已装sidecar。确认旧安装全部迁移后再协同改协议；不是另一个产品或生产链路。历史文档、快照来源、日志及Git记录保留原品牌出处。
+
+新建工作区与保存岗位JD使用function作用域事务依赖，响应发送前提交；避免客户端随即保存仓库或刷新目标时读不到刚保存的数据。repository-link和方向mutation保持原先提交语义。

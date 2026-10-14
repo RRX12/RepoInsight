@@ -196,7 +196,7 @@ with engine.connect() as db:
 command.upgrade(cfg,'head')
 with engine.connect() as db:assert db.execute(text('SELECT count(*) FROM conversations')).scalar()==1
 '''
-    result=subprocess.run([sys.executable,'-c',script],env={**os.environ,'REPOCAREER_DATA':str(tmp_path),'REPOCAREER_DEMO':'true'},capture_output=True,text=True)
+    result=subprocess.run([sys.executable,'-c',script],env={**os.environ,'REPOINSIGHT_DATA':str(tmp_path),'REPOINSIGHT_DEMO':'true'},capture_output=True,text=True)
     assert result.returncode==0,result.stderr
 
 

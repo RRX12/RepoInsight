@@ -80,7 +80,7 @@ def test_chat_demo_checkpoint_and_no_automatic_write(client,wid):
     assert client.get(f'/api/workspaces/{wid}/contributions').json()==[]
 def test_model_parse_failure_has_one_repair(monkeypatch):
     import backend.app.providers as providers
-    monkeypatch.setenv('REPOCAREER_DEMO','false');monkeypatch.setenv('OPENAI_API_KEY','fake')
+    monkeypatch.setenv('REPOINSIGHT_DEMO','false');monkeypatch.setenv('OPENAI_API_KEY','fake')
     calls=[]
     def fake(*a,**kw): calls.append(kw);return {'choices':[{'message':{'content':'invalid'}}]}
     monkeypatch.setattr(providers,'request',fake)

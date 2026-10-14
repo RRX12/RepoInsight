@@ -4,7 +4,9 @@
 
 品牌/前端包名/后端标题/启动提示更新；新本地目录为C:/Users/RS/Documents/ChatGPT/RepoInsight。原AIforResulme根目录因当前Codex进程占用无法直接改名，改为创建新检出并迁入本地运行资料，原根目录保留源码备份。新数据库repoinsight.db通过SQLite backup迁移，旧库备份；新配置REPOINSIGHT优先，旧字段/浏览器选择/sidecar协议兼容，详见architecture。
 
-本次完整隔离检查：138后端、11浏览器、架构A01/A02、类型及隔离构建全部通过（data/repoinsight-check.txt）。无付费模型/向量预算提高；Mermaid既有大包提示保持。源码发布不包含.env、运行数据、依赖、构建产物或exports。具体远端SHA与本地新目录运行核对将在发布完成后补记。
+本次完整隔离检查：138后端、11浏览器、架构A01/A02、类型及隔离构建全部通过（data/repoinsight-check.txt）。无付费模型/向量预算提高；Mermaid既有大包提示保持。源码发布不包含.env、运行数据、依赖、构建产物或exports。源码基线提交2c0ff75；RRX12/RepoInsight公开仓库已创建，新目录原项目ID核对一致，repoinsight.db已加载，原目录仅保留源码备份。后端/DeepWiki均从新目录运行，页面与OpenAPI标题RepoInsight，HTTP200。
+
+迁移验证补充：依赖重新绑定新路径；新建工作区与岗位JD保存使用function作用域事务，在响应前提交，解决紧接保存仓库时偶发404。新/旧配置优先级与数据库文件兼容回归补齐，后端最终142项通过；修复后11浏览器全通过。新配置的检查/fixture显式使用REPOINSIGHT隔离目录，不受本地.env新命名影响。最后隔离总检查记录data/repoinsight-final-isolated-check.txt，源码已准备提交发布，远端结果以最终Git核对为准。
 
 以下为实施阶段历史，不代表最新发布状态。
 

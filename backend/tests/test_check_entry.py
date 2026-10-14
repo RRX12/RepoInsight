@@ -16,7 +16,7 @@ def test_failed_step_stops_same_entry_and_returns_failure(monkeypatch):
     def fail(args,**kwargs):
         calls.append(args)
         assert kwargs['check'] is True
-        assert kwargs['env']['REPOCAREER_DATA']!=str(entry.ROOT/'data')
+        assert kwargs['env']['REPOINSIGHT_DATA']!=str(entry.ROOT/'data')
         raise subprocess.CalledProcessError(7,args)
     monkeypatch.setattr(entry.subprocess,'run',fail)
     assert entry.main()==7 and len(calls)==1

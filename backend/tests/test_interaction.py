@@ -102,7 +102,7 @@ with Session() as s:
     assert 'current_resume' not in state(s,wid)
     assert s.query(Artifact).one().content=='existing handwritten text'
 '''
-    env={**os.environ,'REPOCAREER_DATA':str(tmp_path/'migration')}
+    env={**os.environ,'REPOINSIGHT_DATA':str(tmp_path/'migration')}
     result=subprocess.run([sys.executable,'-c',script],env=env,capture_output=True,text=True)
     assert result.returncode==0,result.stderr
 

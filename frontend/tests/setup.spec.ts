@@ -25,8 +25,8 @@ test('repository precedes JD and header editor preserves JD history without anal
 
 test('skip clears old JD before analysis and regular analysis submits edited JD',async({page})=>{
  const w=await (await page.request.post('/api/workspaces',{data:{interest:'跳过和分析测试',role:'旧岗位'}})).json();
- await page.request.post('/api/workspaces/'+w.id+'/repository-link',{data:{url:'https://github.com/example/workflow'}});
- await page.request.post('/api/workspaces/'+w.id+'/target',{data:{role:'旧岗位',jd:'旧岗位要求'}});
+ const repository=await page.request.post('/api/workspaces/'+w.id+'/repository-link',{data:{url:'https://github.com/example/workflow'}});expect(repository.ok(),await repository.text()).toBeTruthy();
+ const target=await page.request.post('/api/workspaces/'+w.id+'/target',{data:{role:'旧岗位',jd:'旧岗位要求'}});expect(target.ok(),await target.text()).toBeTruthy();
  await page.addInitScript(id=>localStorage.setItem('repocareer.workspace',id),w.id);
  const targets:any[]=[],runs:any[]=[];
  await page.route('**/api/workspaces/'+w.id+'/target',async r=>{targets.push(r.request().postDataJSON());const response=await r.fetch();await r.fulfill({response});});

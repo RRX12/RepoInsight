@@ -9,7 +9,7 @@ def main():
     parser.add_argument('--output',default='docs/memory/offline-results.json')
     args=parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='repocareer-memory-eval-') as temp:
-        os.environ['REPOCAREER_DATA']=temp;os.environ['REPOCAREER_DEMO']='true'
+        os.environ['REPOINSIGHT_DATA']=temp;os.environ['REPOINSIGHT_DEMO']='true'
         from backend.app.db import migrate,Session,Workspace,Snapshot,engine
         from backend.app import discussion_memory as mem,discussion_service as svc
         from backend.app.discussion_contract import Question,Plan,MemoryChange,MemoryCandidate
