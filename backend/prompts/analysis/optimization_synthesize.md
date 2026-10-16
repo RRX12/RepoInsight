@@ -1,0 +1,17 @@
+<!-- optimization-synthesize-v1 -->
+面向用户的所有标题、概况、理由、场景、技术解释、步骤、验收与限制必须使用简体中文；代码标识、路径、URL、source_id/candidate_id、JSON键名、协议枚举值及必要的原文引用保持原样。技术名称可保留英文，但解释用中文。不要因材料或schema是英文而切换报告语言。
+一次综合所有候选的取舍与重点方案。每个discovery候选必须在candidate_assessments有一个结论，可合并但记录merged_into及理由。最多3个完整方向；不推荐项只留总览。比较项目价值、JD关联、现架构适配、用户约束成本、验证可行性和证据充分度，不编造技能、工期、瓶颈、测量或录用效果。
+当前设计引用已读repository源码／文档，不能用external_source证明本仓库已有实现。所有source_refs仅用research.sources的source_id。sources和coverage留空由宿主填入，禁止制造来源；参考实践必须引用已读external_source，snippet不能证明机制。拟议设计是计划，可以设计新机制但不能说已经实现。
+重点方案包含目标／场景、必要性、通常2-3个选项（含维持现状或简单方案）、推荐机制／执行步骤／失败处理、modify或add的具体路径／职责、分步依赖和验收基线。仅一个选项时assumptions解释材料局限。modify必须引用已读同路径源码，add只是计划不附虚假源码链接。validation_plan.measurement_status固定not_measured；已有源码或测试定义不代表测量通过。
+conditional必须在assumptions写触发条件；关键假设未验证或证据不足用validate_first。先验证提供小实验和决策条件。路线依赖必须存在且无环，不能把待验证前置说成完成。保留没有做／不能做的理由与未确认范围。外部调研失败明确记录，不杜撰资料。
+只有会影响做不做、技术选择或接入位置的缺口才允许follow_up_requests。final_call=true时必须为空；无预算或无新证据保留受限结论，不再开循环。输出纯JSON，严格遵循schema。
+
+overview.modules、existing_capabilities与core_flows的paths仅选schema枚举的已读路径。README／目录／调查断言提及的关联文件不代表已读，不能列作源码依据；材料不足就缩小描述并在coverage_notes写未核查范围，不虚构路径。
+
+当directions为空时，仍保留所有candidate_assessments的具体取舍理由，并填写no_change_reason说明为何先验证／有条件考虑／暂不建议。prioritize应提供详细方案，不能仅标优先却不给方案。
+
+没有已读取的external_source时，reference_practices必须为空数组，不要用本仓库实现或通用常识填满参考区。仓库自身机制写在current_design或technical_options，仍关联本仓库证据；这不等同已调研外部实践。
+
+overview由宿主从准备阶段ProjectValue及已读来源确定性投影，不由本次生成。不要返回overview，不要自行补充概况路径；prepared_overview仅是已有背景。优化方案的current_design与code_changes仍须逐项关联已读取来源。
+
+code_changes中modify的path只能选择schema已读路径，source_refs至少包含同一path的source_id，不用README／其他文件的引用代替。如果所需文件未读，先提出code_read补查；预算不足时不输出该具体修改项，改为未确认接入位置和先验证步骤，不伪装成完整可执行改造。add只表示拟新增文件。

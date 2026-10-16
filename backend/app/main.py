@@ -13,7 +13,7 @@ from .db import *
 from .schemas import *
 from .memory import *
 from .providers import GitHub, ModelProvider, ProviderError, demo_fixture, repo_name
-from .analysis import recover_runs, submit, still_executing
+from .analysis import recover_runs, submit, still_executing,finish_timing
 from .agent import SKILLS, load_skill
 from .repository_upload import import_zip, MAX_ARCHIVE
 
@@ -53,7 +53,7 @@ async def operational_error(request, exc):
     return JSONResponse(status_code=409,content={'error':{'code':'storage_busy','message':'存储暂时忙或不可写；请确认数据目录权限后刷新重试','trace_id':request.state.trace_id}})
 @app.get('/api/config')
 def config(): return {'model_mode':'demo' if ModelProvider().demo else 'real','skills':SKILLS,'github':'public REST / optional token','max_material_chars':200000,
-    'deepwiki_configured':bool(os.getenv('DEEPWIKI_BASE_URL')),'deepwiki_provider':os.getenv('DEEPWIKI_PROVIDER','google'),'deepwiki_model':os.getenv('DEEPWIKI_MODEL','服务默认'),
+    'deepwiki_configured':bool(os.getenv('DEEPWIKI_BASE_URL')),'deepwiki_provider':os.getenv('DEEPWIKI_PROVIDER','google'),'deepwiki_model':os.getenv('DEEPWIKI_MODEL','服务默认'),'wiki_retrieval_mode':os.getenv('WIKI_RETRIEVAL_MODE','legacy'),'wiki_index_mode':os.getenv('WIKI_RAG_INDEX_MODE','reuse_only'),
     'deepwiki_web_url':os.getenv('DEEPWIKI_WEB_URL',''), 'max_archive_bytes':MAX_ARCHIVE,'product_flow':'github_project_exploration'}
 @app.get('/api/workspaces')
 def workspaces(s=Depends(session)): return [asdict(w) for w in s.scalars(select(Workspace).order_by(Workspace.created_at.desc()))]
@@ -111,7 +111,13 @@ async def upload_repository(wid:str,request:Request,s=Depends(session)):
 def architecture_run(wid:str,body:ArchitectureRunInput,s=Depends(session)):
     w=require(s,Workspace,wid);snap=require(s,Snapshot,body.snapshot_id,wid);jd=latest_jd(s,wid)
     if snap.metadata_json.get('source_kind') not in ('archive','github_link'):raise HTTPException(422,'请先保存GitHub仓库链接')
-    req={**body.model_dump(),'architecture':True,'role':w.role if w.role.strip() and w.role!='待填写' else '项目工程优化','jd_version_id':jd.id if jd else None,'jd_text':jd.raw_text if jd else '', 'target_origin':'jd' if jd and jd.raw_text.strip() else 'role_inferred'}
+    from scripts.wiki_rag_contract import settings_from_env
+    from .optimization_research import AdvisorConfig
+    try:
+        wiki_settings=settings_from_env()
+        optimization_settings=AdvisorConfig.environment().model_dump()
+    except ValueError:raise HTTPException(422,'分析模式或预算配置无效')
+    req={**body.model_dump(),'constraints':{key:getattr(w,key,'') for key in ('skills','time_budget','environment')},'optimization_schema':'optimization-v2','optimization_config':optimization_settings,'wiki_retrieval':wiki_settings,'architecture':True,'role':w.role if w.role.strip() and w.role!='待填写' else '项目工程优化','jd_version_id':jd.id if jd else None,'jd_text':jd.raw_text if jd else '', 'target_origin':'jd' if jd and jd.raw_text.strip() else 'role_inferred'}
     old=s.scalar(select(Run).where(Run.workspace_id==wid,Run.idempotency_key==body.idempotency_key))
     if old:
         if old.request!=req:raise HTTPException(409,'幂等键对应的快照或岗位JD已变化')
@@ -157,6 +163,7 @@ def cancel(rid:str,workspace_id:str,s=Depends(session)):
     r=require(s,Run,rid,workspace_id)
     s.execute(update(Run).where(Run.id==rid,Run.workspace_id==workspace_id,Run.status.in_(('queued','running'))).values(status='cancelled'))
     s.refresh(r)
+    if r.status=='cancelled':finish_timing(r)
     return asdict(r)
 @app.post('/api/runs/{rid}/retry')
 def retry(rid:str,workspace_id:str,s=Depends(session)):
@@ -164,9 +171,28 @@ def retry(rid:str,workspace_id:str,s=Depends(session)):
     if r.request.get('resume_generation'):
         raise HTTPException(409,'历史简历任务已退役，不能重新生成')
     if r.status not in ('failed','interrupted','cancelled'): raise HTTPException(409,'只有失败、中断或取消的任务可重试')
+    if r.request.get('architecture'):
+        from scripts.wiki_rag_contract import settings_from_env
+        try:current_settings=settings_from_env();current_mode=current_settings['mode']
+        except ValueError:raise HTTPException(422,'Wiki检索配置无效')
+        if r.request.get('wiki_retrieval',{}).get('mode','legacy')!=current_mode:
+            raise HTTPException(409,'Wiki检索模式已切换，请回到项目设置发起新分析；历史任务保留，不再重试旧模式。')
+        if current_mode=='enhanced' and r.request.get('wiki_retrieval',{}).get('budgets',{}).get('index_mode','reuse_only')!=current_settings['budgets']['index_mode']:
+            raise HTTPException(409,'索引准备策略已切换，请回到项目设置发起新分析，历史任务保留。')
     if still_executing(rid): raise HTTPException(409,'上一次任务正在停止，请稍后重试；已避免同一任务并发执行')
     if any(x.id != r.id and x.status in ('queued','running') for x in scoped(s,Run,workspace_id)): raise HTTPException(409,'工作区已有进行中的任务')
+    r.result={k:v for k,v in r.result.items() if k not in ('analysis_started_at','analysis_finished_at','elapsed_seconds')}
+    r.result={**r.result,'queued_at':now()}
     r.status='queued'; r.error=None; s.commit(); submit(r.id); return asdict(r)
+
+@app.delete('/api/analysis-history')
+def clear_analysis_history(s=Depends(session,scope='function')):
+    deleted=0;protected=0
+    for r in s.scalars(select(Run)).all():
+        if r.request.get('resume_generation'):continue
+        if r.status in ('queued','running') or still_executing(r.id):protected+=1;continue
+        s.delete(r);deleted+=1
+    return {'deleted_count':deleted,'protected_count':protected}
 @app.post('/api/workspaces/{wid}/evidence')
 def new_evidence(wid:str,body:EvidenceInput,s=Depends(session)):
     require(s,Workspace,wid)

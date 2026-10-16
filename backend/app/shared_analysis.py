@@ -88,7 +88,7 @@ def get_or_build_analysis(snapshot,material,ctx,reader,call,emit,*,model='config
                 check();uploaded[path]=reader.read_document(material['repo'],ctx.commit_sha,path)
             manifest=retriever.prepare(material['repo'],ctx.commit_sha,int(os.getenv('CODE_INDEX_NEW_VECTOR_BUDGET','0')),uploaded_files=uploaded)
         else:manifest=retriever.prepare(material['repo'],ctx.commit_sha,int(os.getenv('CODE_INDEX_NEW_VECTOR_BUDGET','0')))
-        identity={'workspace_id':ctx.workspace_id,'snapshot_id':ctx.snapshot_id,'revision':ctx.commit_sha,'index':manifest,'jd':material.get('jd',''),'role':ctx.role,'dimensions':ctx.target_dimensions,'corrections':material.get('project_corrections',[]),'version':VERSION,'jd_plan_version':'source-ids-v1','model':model,'templates':digest([(p.name,p.read_text(encoding='utf-8')) for p in sorted((Path(__file__).resolve().parents[1]/'prompts/analysis'/name) for name in ('common.md','technical_investigation.md'))])}
+        identity={'workspace_id':ctx.workspace_id,'snapshot_id':ctx.snapshot_id,'revision':ctx.commit_sha,'index':manifest,'jd':material.get('jd',''),'jd_version_id':material.get('jd_version_id'),'role':ctx.role,'dimensions':ctx.target_dimensions,'corrections':material.get('project_corrections',[]),'constraints':material.get('constraints',{}),'version':VERSION,'jd_plan_version':'source-ids-v1','model':model,'templates':digest([(p.name,p.read_text(encoding='utf-8')) for p in sorted((Path(__file__).resolve().parents[1]/'prompts/analysis'/name) for name in ('common.md','technical_investigation.md'))])}
         ident=digest(identity);path=cache_directory()/'shared'/ctx.workspace_id/(ident+'.json')
         with _lock:
             check()
@@ -97,6 +97,7 @@ def get_or_build_analysis(snapshot,material,ctx,reader,call,emit,*,model='config
                 if pack.identity!=identity or pack.content_hash!=digest(pack.model_dump(exclude={'content_hash'})):raise ProviderError('共享分析缓存身份或哈希错误','analysis_cache')
                 validate_discovery(pack.discovery,{e.id:e for e in pack.evidence},pack.target.requirements,ctx,{})
                 emit('SHARED_ANALYSIS','reused_analysis',{'analysis_pack_id':ident,'current_usage':None});return pack
+            emit('SHARED_ANALYSIS','cache_miss',{'reason':'无完整匹配包：版本／JD／约束／更正／模型／模板或索引身份不同'})
             tree=reader.list_tree(material['repo'],ctx.commit_sha);paths=set(tree['paths']);evidence={};reads=[];chars=0;gaps=[]
             max_files=min(16,max(1,int((os.getenv('PROJECT_SOURCE_FILES') or os.getenv('RESUME_SOURCE_FILES','12')))))
             read_paths=set()

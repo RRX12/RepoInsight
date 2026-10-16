@@ -108,10 +108,39 @@ def archive_files(repo,revision):
             files[path]=text
     return files,skipped
 
+def native_seed(repo,index):
+    """Reuse only full input matches in the native embedding-config namespace."""
+    from api.rag.pipeline import get_repo_db
+    from adalflow.core.db import LocalDB
+    existing=Path(get_repo_db(repo));seed=[]
+    if existing.is_file() and existing.parent.name==index.fingerprint[:16]:
+        db=LocalDB.load_state(str(existing))
+        for doc in db.get_transformed_data(key='split_and_embed') or []:
+            vector=getattr(doc,'vector',None)
+            if vector is not None:seed.append((doc.text,list(vector)))
+    return seed
+
+def index_for_id(native,ident):
+    # The ready structural manifest is shared with optimization retrieval; no second build.
+    if not re.fullmatch(r'[0-9a-f]{64}',ident):raise ValueError('invalid_index_id')
+    path=native.root/'manifests'/(ident+'.json')
+    if path.exists():
+        manifest=json.loads(path.read_text(encoding='utf-8'))
+        version=manifest.get('splitter_version','')
+        if version.startswith('wiki-structure-v1/'):
+            return Index(native.root,native.fingerprint,native.embed,version,ranker=native.ranker)
+    return native
+
 @router.post('/prepare')
 def prepare(request:Request,body:Prepare):
     repo,folder,index=bound(request,body)
     try:
+        ready=index.root/'wiki-ready'/(digest([body.repo_identity,body.snapshot_revision,index.fingerprint])+'.json')
+        if ready.exists():
+            ident=json.loads(ready.read_text(encoding='utf-8'))['index_id'];structured=index_for_id(index,ident);manifest=structured.load(ident)
+            if (manifest['repo_identity'],manifest['indexed_revision'])!=(body.repo_identity,body.snapshot_revision):raise ValueError('version_mismatch')
+            manifest.pop('chunks',None)
+            return {'manifest':manifest,'usage':index.usage(),'reused':True,'unread_paths':manifest['coverage'].get('unread_paths',[])}
         cached=index.find(body.repo_identity,body.snapshot_revision)
         if cached:
             cached.pop('chunks',None)
@@ -126,15 +155,7 @@ def prepare(request:Request,body:Prepare):
             try:files,skipped=git_files(folder,revision)
             except (OSError,subprocess.SubprocessError):files,skipped=archive_files(body.repo_identity,revision)
         # Existing sidecar owns deserialization; RepoInsight never opens this pickle.
-        seed=[]
-        from api.rag.pipeline import get_repo_db
-        from adalflow.core.db import LocalDB
-        existing=Path(get_repo_db(repo))
-        if existing.is_file() and existing.parent.name==index.fingerprint[:16]:
-            db=LocalDB.load_state(str(existing))
-            for doc in db.get_transformed_data(key='split_and_embed') or []:
-                vector=getattr(doc,'vector',None)
-                if vector is not None:seed.append((doc.text,list(vector)))
+        seed=native_seed(repo,index)
         result=index.prepare(body.repo_identity,revision,files,body.max_new_vectors,seed,skipped)
         result['unread_paths']=skipped
         # No raw vectors or API credentials leave this process.
@@ -148,5 +169,10 @@ def prepare(request:Request,body:Prepare):
 def search(request:Request,body:Search):
     _,_,index=bound(request,body)
     if body.expected_embedding_fingerprint!=index.fingerprint:raise HTTPException(409,'embedding_configuration_mismatch')
-    try:return index.search(body.index_id,body.repo_identity,body.snapshot_revision,body.query,body.top_k)
+    try:
+        index=index_for_id(index,body.index_id)
+        result=index.search(body.index_id,body.repo_identity,body.snapshot_revision,body.query,body.top_k)
+        fields={'chunk_id','path','start_line','end_line','text','content_hash','rank','score','vector_rank','lexical_rank','fusion_score'}
+        result['hits']=[{k:v for k,v in row.items() if k in fields} for row in result['hits']]
+        return result
     except (ValueError,OSError):raise HTTPException(409,'index_unavailable_or_version_mismatch')

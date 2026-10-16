@@ -33,6 +33,11 @@ class ProjectModel:
                 budget_stage=stage[:-len(suffix)];break
         discovery=budget_stage in ('INVESTIGATE','SYNTHESIZE')
         payload['max_tokens']=min(16000,max(7000,int(os.getenv('PROJECT_DISCOVERY_MAX_TOKENS') or os.getenv('RESUME_DISCOVERY_MAX_TOKENS','12000')))) if discovery else 7000 if stage.startswith('CLAIM_VERIFY') else 6000 if budget_stage=='PROJECT_CONTEXT' else 3500
+        if budget_stage in ('OPTIMIZATION_DISCOVER','OPTIMIZATION_SYNTHESIZE','OPTIMIZATION_REFINE'):
+            from .optimization_research import AdvisorConfig
+            config=AdvisorConfig.environment()
+            payload['max_tokens']=config.plan_output_tokens if budget_stage=='OPTIMIZATION_DISCOVER' else config.report_output_tokens
+            payload['messages'][0]['content']+=' 面向用户的报告内容必须使用简体中文；JSON键名、枚举、证据ID、代码标识、路径和URL保留原样。'
         if system_instruction is not None:payload['messages'][0]['content']=system_instruction
         if output_budget is not None:payload['max_tokens']=output_budget
         if review:payload['response_format']={'type':'json_object'}

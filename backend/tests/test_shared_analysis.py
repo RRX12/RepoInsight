@@ -13,11 +13,14 @@ def test_optimizer_path_repair_is_bounded_and_never_accepts_unknown():
     def planner(p):
         stage=p.split('\n',1)[0];calls.append(stage)
         if stage.startswith('OPTIMIZATION_'):
-            d=report();d['overview']['modules'][0]['paths']=['invented.py'];return json.dumps(d)
+            from backend.tests.advisor_fixture import plan,report_v2
+            d=plan(p) if stage.startswith('OPTIMIZATION_DISCOVER') else report_v2(p)
+            if 'candidate_assessments' in d:d['candidate_assessments'][0]['source_refs']=['invented-source']
+            return json.dumps(d)
         return stub(p)
     with pytest.raises(ProviderError) as e:optimize(SimpleNamespace(id='s',commit_sha=SHA),MATERIAL,lambda *a:None,lambda:None,planner,Reader(),Retriever())
     assert e.value.code=='optimization_contract'
-    assert calls.count('OPTIMIZATION_PATH_REPAIR')==1 and 'OPTIMIZATION_CHECK' not in calls
+    assert calls.count('OPTIMIZATION_SYNTHESIZE_SCHEMA_REPAIR')==1 and 'OPTIMIZATION_CHECK' not in calls
 
 
 @pytest.mark.parametrize('kind',['test_source','documentation','code'])
@@ -44,14 +47,18 @@ def test_actual_architecture_entry_preserves_wiki_on_failure_then_reuses_shared(
         def close(self):pass
     class Model(Stub):
         def __call__(self,p):
-            if p.startswith('OPTIMIZATION_PLAN'):
+            if p.startswith('OPTIMIZATION_DISCOVER'):
                 if fail[0]:raise ProviderError('模拟下游异常','offline_failure')
-                return json.dumps(report())
-            if p.startswith('OPTIMIZATION_CHECK'):return json.dumps({'approved':True,'issues':[]})
+                from backend.tests.advisor_fixture import response
+                return response(p)
+            if p.startswith('OPTIMIZATION_'):
+                from backend.tests.advisor_fixture import response
+                return response(p)
             return stub(p)
     monkeypatch.setattr('backend.app.deepwiki.DeepWikiOpen',Wiki)
     monkeypatch.setattr('backend.app.optimization_review.ProjectModel',Model)
     monkeypatch.setattr('backend.app.optimization_review.SourceReader',Reader)
+    monkeypatch.setattr('backend.app.optimization_review.CodeRetrieval',Retriever)
     monkeypatch.setattr('backend.app.main.submit',lambda rid:None)
     response=client.post(f'/api/workspaces/{wid}/architecture-runs',json={'snapshot_id':snapshot['id'],'demo':False,'idempotency_key':'new-analysis'})
     assert response.status_code==200,response.text
@@ -131,16 +138,8 @@ def test_jd_refs_bind_exact_text_without_model_copying():
     with pytest.raises(ValidationError):schema.model_validate({'requirements':[{**row,'jd_source_ids':['JD-99']}]})
 
 
-def test_optimization_schema_enumerates_read_paths_in_all_citations():
-    from backend.app.optimization_review import report_schema
-    schema=report_schema({'lib/read.ts'}).model_json_schema()
-    found=[]
-    def walk(node):
-        if isinstance(node,dict):
-            for key,value in node.get('properties',{}).items():
-                if key in ('paths','source_paths'):found.append(value['items']['enum'])
-            for value in node.values():walk(value)
-        elif isinstance(node,list):
-            for value in node:walk(value)
-    walk(schema)
-    assert len(found)>=3 and all(value==['lib/read.ts'] for value in found)
+def test_optimization_schema_separates_source_identity_and_add_paths():
+    from backend.app.architecture_schema import CodeChange,ResearchSource
+    from pydantic import ValidationError
+    assert CodeChange(change_type='add',path='new.py',responsibility='new',change_description='planned').source_refs==[]
+    with pytest.raises(ValidationError):ResearchSource(source_id='x',kind='source_code',locator='x',excerpt='x',content_hash='h',retrieved_at='now')

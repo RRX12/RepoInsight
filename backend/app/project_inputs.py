@@ -45,5 +45,6 @@ def collect_project(s,wid):
     if not snaps:raise HTTPException(422,'请先保存仓库链接')
     snap=snaps[-1]
     material={'workspace_id':wid,'snapshot_id':snap.id,'repo':snap.owner+'/'+snap.repo,'commit':snap.commit_sha,'role':w.role,'jd':jd.raw_text if jd else '', 'jd_version_id':jd.id if jd else None,
+              'constraints':{key:getattr(w,key,'') for key in ('skills','time_budget','environment')},'optimization_schema':'optimization-v2','optimization_prompt':'advisor-v1',
               'project_corrections':[{'id':e.id,'excerpt':e.excerpt,'source':e.source_ref} for e in scoped(s,Evidence,wid) if e.type=='user_statement' and e.source_ref=='用户确认的项目分析更正' and (e.snapshot_id is None or e.snapshot_id==snap.id)]}
     return snap,material,digest(material)

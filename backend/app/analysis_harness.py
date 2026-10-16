@@ -52,7 +52,7 @@ class Harness:
             temp=path.with_suffix('.'+os.urandom(4).hex()+'.tmp')
             temp.write_text(result.model_dump_json(),encoding='utf-8');temp.replace(path)
 
-    def call(self, prompt, *, stage=None):
+    def call(self, prompt, *, stage=None, output_budget=None):
         if self.check_active:self.check_active()
         stage=stage or prompt.split('\n',1)[0]
         if len(self.records) >= self.max_calls:
@@ -69,7 +69,7 @@ class Harness:
         outcome = 'completed'
         try:
             if self.structured_output is not None and hasattr(self.chat,'request'):
-                return self.chat.request(prompt,stage=stage,json_output=self.structured_output)
+                return self.chat.request(prompt,stage=stage,json_output=self.structured_output,**({'output_budget':output_budget} if output_budget is not None else {}))
             return self.chat(prompt)
         except Exception:
             outcome = 'failed'

@@ -14,8 +14,9 @@ from backend.tests.test_shared_analysis import report
 def optimize(material=MATERIAL,model=None,reader=None,check=lambda:None):
     stub=model or Stub()
     def call(prompt):
-        if prompt.startswith('OPTIMIZATION_PLAN'):return json.dumps(report())
-        if prompt.startswith('OPTIMIZATION_CHECK'):return json.dumps({'approved':True,'issues':[]})
+        if prompt.startswith('OPTIMIZATION_'):
+            from backend.tests.advisor_fixture import response
+            return response(prompt)
         return stub(prompt)
     return generate(SimpleNamespace(id='s',commit_sha=material['commit']),material,lambda *a:None,check,call,reader or Reader(),Retriever())
 
@@ -43,7 +44,7 @@ def test_analysis_cache_corruption_and_cancellation_are_not_ignored(tmp_path):
 def test_failed_downstream_keeps_verified_pack():
     stub=Stub()
     def failed(prompt):
-        if prompt.startswith('OPTIMIZATION_PLAN'):raise ProviderError('offline failure','offline_failure')
+        if prompt.startswith('OPTIMIZATION_DISCOVER'):raise ProviderError('offline failure','offline_failure')
         return stub(prompt)
     with pytest.raises(ProviderError):generate(SimpleNamespace(id='s',commit_sha=SHA),MATERIAL,lambda *a:None,lambda:None,failed,Reader(),Retriever())
     second=Stub();optimize(model=second);assert not second.calls

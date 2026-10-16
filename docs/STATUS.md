@@ -1,3 +1,265 @@
+# 当前交付：最新版合入主分支（2026-10-16）
+
+用户本次授权将当前最新版提交到项目主分支并同步RepoInsight远端。范围包括现有未提交增强Wiki／动态索引、优化规划V2及修复、界面工作台与文档测试，不包含被忽略的.env、data、构建产物和依赖。复用最近验证：243后端、17浏览器、架构／类型／构建通过；凭据模式扫描未发现匹配，暂存内容git diff --check通过（附件规格两处尾空格已清理）。保留已知限制：外部调研本机默认关闭且未配置Key，真实模型质量未验证，允许零详细方案的行为未在本次发布修改。全部68文件已提交并切换本地main，原codex/repoinsight分支保留。两次fetch连接重置，普通push -u origin main失败：github.com:443无法连接，未强推／未改远端权限；GitHub主分支尚未确认更新，网络恢复后git push -u origin main继续，远端若有新提交先整合再推送。
+
+---
+
+# 当前诊断：最新优化完成但无详细方案（2026-10-16）
+
+只读核对8000生产API：最新e4377c4d0e8940099aa301c36e26ab30（15:16）completed、optimization-v2，3候选（validate_first／conditional／not_recommended）、directions=0、roadmap为空，2项验证动作。截图记忆治理正是本轮conditional候选。模型综合有completed记录，非旧前端或代码未执行；no_change_reason明确暂缓实施设计。已读12条独立路径，未包含lib/character-memory.ts；相关调查返回source_budget_or_no_hits，该错误合并预算／未命中原因，不能仅凭错误断言是哪项预算。源码工具26次，不能称32次工具预算耗尽。仓库.env未设外部开关（默认false），Tavily Key未配置，仅核对存在性不输出密钥；本轮web_tools为空，coverage明确disabled_or_not_configured。现契约仅prioritize强制详细方案，conditional／validate_first允许零方案，因此只给验证建议仍可completed。未修改生成逻辑／配置，未真实调用付费或外部服务，不自动重分析。
+
+---
+
+# 当前改版：研究工作台视觉与阅读体验（2026-10-16）
+
+复用architecture-entry、WikiOverview、OptimizationDirections、AdvisorReport和FloatingChat全部业务交互；新workbench.css仅集中用户工作台视觉，覆盖旧兼容样式，不增加业务模块、数据表或生成入口。暖白／墨绿／浅青绿视觉、页面专属标题、真实当前仓库标识、顶部标签、分步表单、运行状态、章节目录、技术对比卡片、浮动讨论统一层级；窄屏章节目录移到正文上方，保留视口内移动／缩放。移除Google Fonts外链，使用系统字体；弹窗层级高于导航／浮窗，键盘焦点与减少动画偏好支持。旧管理界面和报告读取保留，未改任务／取消／历史数据及模型预算。PRODUCT同步。
+
+验证：架构通过、后端243通过（18.58秒）、类型通过、隔离构建43.19秒；浏览器最终17通过（24.8秒），覆盖仓库／JD顺序及编辑、跳过、Wiki章节、进度、方向增删改选及历史隔离、方案比较、讨论隔离／停止／晚到结果、浮窗拖动缩放与390px无横向溢出。首轮在拖动断言前新增fullPage截图造成浮窗位置改变，16通过1失败；撤回该临时截图后原断言全通过，未弱化有效测试。已检查最终移动端回归截图。日志data/workbench-check.txt与data/workbench-e2e.txt。
+
+生产前端已单独构建成功32.97秒（data/workbench-build.txt），8000首页200；无需重启后端，刷新加载新产物。内置浏览器连接报bridge不可用，未完成用户真实项目的交互式视觉检查；离线浏览器fixture验证不代表真实模型质量。未调用付费服务／真实分析，未推送，保护已有未提交改动。回退仅撤销本次workbench.css引用、页面标题／身份区与AdvisorReport样式类以及字体改动，重新构建前端；不回滚其他未提交工作，不删数据。既有Mermaid大包警告保留。
+
+---
+
+# 当前修复：最新优化轮次与历史建议分离（2026-10-16）
+
+实际检查：最新Run ee73f151f0e44a40a98104faffde759c失败conditional_requires_trigger，无公开report；上一成功Run4244b4e3965f4d9791fd6c4f4ed911a5为英文V2，6候选／1重点方案／2技术选项。OptimizationDirections原来展示所有Improvement摘要，与currentRun报告是否存在无关，因此最新失败时仍混入旧英文建议，用户误认为新输出没有技术比较。
+
+修复：默认按当前Run improvement_ids／details.run_id显示系统方向，历史系统条目需显式勾选并标历史；用户保存的方向保持操作。展示本轮编号／时间／是否发布，无报告时明确说明；重点方案折叠标题标技术选项数量。没有改写或删除旧报告／方向。读取诊断确认conditional候选rationale写依赖条件但assumptions为空，本次保守降validate_first并列需明确条件的未确认项，不猜触发条件、不作为可直接实施推荐。未自动调用模型发布新报告，当前旧failed状态保留待用户安全重试。
+
+验证：统一scripts/check.py --e2e全通过，243后端（66.87秒）、17浏览器（1.5分钟）、架构／类型／隔离构建；新增浏览器测试验证最新失败默认隐藏旧系统摘要且可显式查看，并保持技术比较／讨论。日志data/latest-advisor-display-check.txt。生产前端另构建成功55.67秒，data/latest-advisor-display-build.txt；确认无活动Run、核对PID23116后完整重启8000为PID7072（终端49313）。首页200，实际服务JS包含当前优化版本／历史选择／技术对比文本，说明最新产物已加载。未调用真实模型／搜索，未改.env／推送。刷新页面可见版本信息；安全重试复用Wiki与匹配材料，再尝试发布新报告，真实模型结果仍未验证。
+
+---
+
+# 当前修复：修改路径与同文件证据关联（2026-10-16）
+
+最新Run ee73f151f0e44a40a98104faffde759c失败modify_requires_read_source，旧错误无具体路径，不能还原旧响应。新增wire CodeChange条件schema：modify路径仅已读路径，引用非空且至少包含同一文件证据ID；add仍为拟新增，不能冒充已有事实。运行时guard不放宽，错误附path／path_read／source_refs／matching_refs，模板要求未读文件先补查，预算不足则标未确认接入位置及先验证，不输出无依据的具体修改项。校验失败原输出与来源映射单独原子保存在cache_directory/advisor-errors/工作区，不作为公开或可复用结果，取消检查保留。
+
+58项优化／项目回归通过，含未读modify拒绝、schema关联和诊断记录。本次没有修改文件预算、生产.env或自动发起分析；确认无活动Run后完整重启8000（原PID6716），首页200。Wiki及共享包保留，可安全重试，真实模型生成未验证；没有推送。
+
+---
+
+# 当前修复：优化概况复用准备模型结果（2026-10-16）
+
+用户实际错误明确worker/save-api.ts未读取却出现在Server-side save API概况中。此前只提供schema白名单仍不足以阻止重复生成概况。本次用prepared_overview将准备阶段既有模型ProjectValue架构／流程／source_refs确定性投影为兼容Overview，路径仅映射原证据ID且属于本轮已读来源。缺少关系时明确未知，不新造架构。综合wire schema移除overview生成字段；接收时宿主填入投影，不采用模型重复概况。优化方向的current_design／code_changes和直接validate_report的未读路径保护继续严格。没有补读越过文件预算或把未读路径升级为证据，没有新增模型调用。白名单动态schema仍约束候选与方案引用。
+
+57项优化／项目定向测试通过，验证模型不能注入概况未读路径、直接校验仍拒绝、未知方向引用仍拒绝；架构通过。全后端240通过、1讨论记忆删除测试失败；该单项独立重跑通过1项（0.60秒），未修改其实现／断言，按间歇失败记录，不声称整轮全通过。日志data/advisor-overview-projection-tests.txt。无活动任务后核对PID10956完整重启8000，首页200；未调用真实模型、未改.env／推送。Wiki／共享材料保留，可安全重试。复用概况按原准备记录保留文字，不做付费翻译；真实生成质量未验证。
+
+---
+
+# 当前修复：已读仓库相对链接（2026-10-16）
+
+新Run ee73f151f0e44a40a98104faffde759c在Wiki失败model_source_link_not_allowed；实际错误记录正文有docs/PROJECT_HANDOFF.md与docs/AGENT_ARCHITECTURE.md相对链接。当前写作要求仅证据标记，模型仍常返回Markdown文件链接。本次仅对safe_path且精确匹配当前已读Evidence的相对路径（允许./前缀）转成对应证据标记，并同步引用元数据，最后由现有链接渲染生成固定SHA／已读范围链接；不保证原失败链接都已读，不对未知路径／外链／跨版本链接放行。转换记录repository_link_to_evidence。42项Wiki回归通过，包含已读链接转换和未知／外部／越界链接拒绝。补丁已安装，无活动Wiki任务后核对PID19420重启8002，OpenAPI200。未实际调用模型，不改.env或推送；真实完整生成未验证。
+
+---
+
+# 当前修复：优化报告中文语言约束（2026-10-16）
+
+实际完成Run4244b4e3965f4d9791fd6c4f4ed911a5的概况与6个候选标题为英文。新增优化模板和系统传输此前没有中文要求，本次在DISCOVER／SYNTHESIZE模板及ProjectModel优化阶段系统消息（含REFINE和SCHEMA_REPAIR）明确简体中文，技术标识／键名／枚举／路径／证据ID等不翻译。模板hash隔离旧优化缓存；历史英文报告不改写，也不付费自动翻译。46项预算／优化测试通过，覆盖各阶段含修复的系统语言要求。无活动Run后核对PID18480完整重启8000，首页200。需要发起新分析生成中文版本；本次未真实调用模型，不推送。未验证真实模型语言遵循，系统提示不是语言质量保证。
+
+---
+
+# 当前修复：外部参考的生成schema范围（2026-10-16）
+
+同Run最新失败practice_requires_read_external_source，failure_usage.web_tools为空。输出将不符合已读外部正文要求的ID放进参考实践，旧错误无具体引用ID。本次按真实来源包收紧wire schema：ReferencePractice.source_refs仅已读external_source枚举，无外部正文则DetailedDirection.reference_practices maxItems=0；仓库自身方案照常使用仓库证据。不丢弃非法实践后冒充验证通过，运行时guard继续拒绝并给出无效ID及明确原因。提示写明外部调研缺失时留空。57项相关回归通过，含详细方案可生成且仓库来源冒充外部仍拒绝；无活动任务后核对PID9088完整重启8000，首页200。未调用真实搜索或模型、未改.env／推送。Wiki与匹配源码调查保留，可安全重试；真实生成结果未验证。
+
+---
+
+# 当前修复：仅候选取舍报告的总说明（2026-10-16）
+
+最新同Run失败empty_report_reason，指directions为空且no_change_reason缺失。原规则没有区分V2已有完整候选取舍的情况；本次在没有prioritize且所有候选rationale非空时，确定性汇总模型原有理由形成总说明，不编造方案或事实。优先推荐但无详细方案、没有任何理由仍拒绝；有证据不足的候选继续validate_first。模板明确空方案须解释。56项优化／项目定向回归通过，包含缺优先方案及全空理由拒绝。无活动Run后核对PID16752并完整重启8000，首页200；没有真实模型调用、改.env或推送，Wiki与共享事实材料保留，可安全重试。未取得旧失败完整响应，不能宣称旧所有候选具体为何未展开；真实结果仍待验证。
+
+---
+
+# 当前修复：优化概况的路径白名单（2026-10-16）
+
+最新同Run优化失败unread_overview_path，冷准备CLAIM_VERIFY_SCHEMA_REPAIR已消耗全流程一次修复，综合无法再修复。旧错误未保存具体path／原输出，不能还原旧未知路径。检查现有包有12个已读路径，优化输入同时含提及关联文件的项目材料，但输出schema缺少路径枚举。本次将实际research.sources的已读仓库路径和source_id绑定进优化请求JSON schema（含修复），overview未读路径继续拒绝，错误附section／unread_paths／allowed_paths；加强模板不得把文档提及路径当已读。没有删除校验或自动添加未读路径。55项优化／项目相关测试通过，新增schema白名单及具体路径拒绝验证。无活动Run后核对PID6276并完整重启8000，首页200；没有真实模型调用、改.env或推送。Wiki及匹配共享材料保留，可安全重试。真实生成仍未验证。
+
+---
+
+# 当前运行修复：统一后端版本（2026-10-16）
+
+最新失败4244b4e3965f4d9791fd6c4f4ed911a5：实际终端37517完整trace显示Harness.call不接受output_budget。原因是长期运行PID23016已导入旧analysis_harness，而优化模块首次懒加载读取了新源码，形成混合版本；不是模型或Wiki失败。DB确认Wiki12章均保存。无活动Run时核对模块／PID并完整重启8000（PID6276，终端38188），构建前端加载对应V2展示；本次按用户继续修复请求本地加载，未调用真实分析。首页／配置HTTP200，生产前端构建成功，预算与优化相关39项离线测试通过（data/advisor-runtime-regressions.txt），构建日志data/advisor-runtime-build.txt。Wiki保留，可安全重试进入优化，不需要重新生成。未改.env、未推送。后续修改后端调用契约须完整重启后端，不可依赖懒加载混合热更新。
+
+---
+
+# 当前修复：submit_review单层包装兼容（2026-10-16）
+
+最新任务4244b4e3965f4d9791fd6c4f4ed911a5在Wiki阶段失败，12章中11章成功，未进入优化。模型submit_review参数返回单一review包装，decode_review_calls直接当Review对象校验导致coverage缺失及review多余。本次仅对唯一键review且值为对象时解包，未知同层／内部字段仍拒绝，未放宽证据／身份校验。38项Wiki回归通过；安装sidecar补丁，无活动Wiki任务后核对PID23428并重启8002，OpenAPI200。未调用真实模型；没有部署上一轮优化V2或重建前端，旧成功章节缓存保留，可安全重试。未推送。
+
+---
+
+# 当前交接：优化规划 V2（2026-10-16，未提交／未部署／未推送）
+
+按用户附件SPEC-optimization-advisor实施。实际仓库C:/Users/RS/Documents/ChatGPT/RepoInsight，codex/repoinsight，HEAD fa25504604e494c42296ddcdfc344340e6e28980；开始已有大量Wiki／动态索引／README等未提交改动，全部保留。未改生产.env、未重启服务、未覆盖生产dist或数据库、未调用真实模型／Tavily／embedding；没有推送。适用AGENTS／PRODUCT／architecture／当前STATUS和生产调用方已核对，JD可发现合理深化／扩展的冲突规则已更新。
+
+完成：复用architecture-runs → execute_architecture → optimization_review、共享固定SHA调查、Harness／ProjectModel、CodeRetrieval／SourceReader、Run／Improvement／讨论。新增OptimizationReportV2候选评估／完整技术方案／引用／路线契约及兼容投影；新增optimization_research管理候选公平工具预算／去重／范围合并，web_research提供真实可配置Tavily普通搜索与公网正文读取，不增加Agent／调度／数据库迁移或依赖。优化采用DISCOVER → 工具 → SYNTHESIZE → 可选一次工具补查＋REFINE，不再自动OPTIMIZATION_CHECK或extend_analysis隐藏额外事实模型；冷准备保留独立核验并计数。最多3语义／4尝试，失败计数、格式修复全流程一次、单Harness全Run12次／250000已报告Token／160000字节阶段保护保持。规划4000、报告10000输出和对应修复实际传输，length截断拒绝。
+
+约束skills／time_budget／environment可选输入、加入请求冻结／输入指纹及共享缓存；JD版本／更正／模型／模板／配置／包身份与来源／工具hash隔离缓存。引用、修改／新增路径、条件与依赖校验；源码摘录保留原始空白，合并重叠范围保留源ID映射。候选总览含不推荐项，重点方案展开选项、参考、步骤、验收和来源；旧报告和用户方案保留操作，讨论只送有界摘要、完整details hash防晚到保存。失败成本分别记录preparation_model／optimization_model／embedding／web_tools／upstream_wiki，未知null；缓存复用不把历史调用记本轮。
+
+外部：OPTIMIZATION_WEB_ENABLED=false默认关闭，TAVILY_API_KEY服务端配置；basic搜索关闭answer及auto_parameters，官方接口已核对。24小时缓存，可WEB_REFRESH=true绕过；失败／无凭证透明受限继续。PublicTransport逐跳校验URL，全部DNS结果必须公网，直接连接选定IP、TLS原域名验签，不用环境代理／再次DNS解析；500KB／12秒／3重定向，不执行JS。查询不发送JD／约束／源码片段，raw正文或受控已搜索URL才能作为external_source。没有外部生成模型，搜索潜在计费usage未知不填0。
+
+验证：统一scripts/check.py --e2e通过（225后端、架构、类型、隔离构建、16浏览器57.9秒）；随后补齐预算／范围合并／DNS固定连接／成本记录与冻结开关后，全后端最终229项通过16.43秒，架构A01/A02再次通过，相关53项定向回归通过。最终补齐来源URL编码、冻结外部开关、失败成本、无新增证据不消耗第三次调用后再次运行全后端229项通过；来源摘录合并与DNS固定连接31项调研专测通过。日志data/advisor-delivery-check.txt、advisor-backend-complete.txt、advisor-backend-delivery.txt、advisor-final-regressions.txt、advisor-cost-regressions.txt。初轮旧流程测试fixture不识别V2阶段及缓存目录未隔离而失败，已更新注入响应／缓存隔离并保留来源拒绝断言；一个原Wiki默认预算测试受本机显式WIKI_RAG_MAX_NEW_VECTORS污染，测试明确清理该覆盖后原断言通过。新增合并测试发现Strict自动去尾空白导致范围冲突，改为摘录保真；一次机械编辑缩进错误被架构门禁捕获并修正。没有弱化guard换取通过。构建仍有既有Mermaid大chunk提示，不阻断。
+
+内容评测：fixtures/optimization-advisor/cases.json提供已有能力、扩展、重复、证据不足、时间约束5例。scripts/evaluate-optimization-advisor.py默认仅离线输出题目与评价维度（data/advisor-evaluation-rubric.json），不等于内容质量测试通过。真实对照需显式--allow-paid --workspace-id ID --snapshot-id ID --output data/advisor-eval.json，锁定当前快照／JD／约束，只输出文件不发布Run或方向。真实模型输出上限、上下文、推荐质量、搜索召回／额度／费用、真实公网TLS及性能未联调；没有凭证也已完成适配器与MockTransport验证。
+
+启用：使用当前代码重新构建前端（pnpm --dir frontend run build）并重启后端，再发起新分析；本轮未部署。无需改sidecar／Wiki。若需外部调研，根.env配置OPTIMIZATION_WEB_ENABLED=true和TAVILY_API_KEY后重启；默认无外部请求。回退外部调研设置false；整体回退本轮优化源码／模板后重启后端，保留V2历史读取组件与兼容投影，不能删库回退schema。尚有其他既有未提交改动，请按本轮文件范围选择性审阅，勿整仓重置。
+
+---
+
+# 当前运行恢复（2026-10-15）
+
+用户报告打不开，检查8000／8002均无监听，前端dist和venv存在。重新启动后端8000（PID23016，终端37517）与sidecar8002（终端19281），未改配置或触发分析。首页与配置HTTP复核见本轮回执。
+
+---
+
+# 当前交接：面向使用者的README与自动应用依赖安装（2026-10-15）
+
+README重写为Windows准备／固定SHA sidecar安装／两份.env和Wiki-优化-embedding模型配置／双终端启动／产品使用／排错。删除本机启用状态与调试流水，不把当前本机最高预算作为默认推荐。说明API Key、模型ID、Ollama本地embedding、缓存／安全重试及新分析差异，保留增强质量未验证边界。
+
+复用scripts/start.ps1：首次无.venv时创建并安装backend锁文件，缺前端依赖时pnpm frozen安装，缺构建时构建；-Install显式刷新依赖／构建，-SetupOnly只准备不启动；.env只在缺失时复制，不覆盖配置，外部命令失败非零中断。系统软件及独立sidecar仍按README首次安装，不声称全栈自动配置。没有改变模型调用链、未安装真实新依赖、未启动分析或推送。
+
+验证：PowerShell AST语法检查通过；在既有依赖环境start.ps1 -SetupOnly成功，无服务重启／真实API调用。核对sidecar固定基线、local.patch、锁文件、安装器与配置脚本、ProjectModel凭证优先级。未在全新Windows机器下载和重装所有依赖，Linux/macOS启动未验证。
+
+---
+
+# 当前修复：引用ID前缀遗漏（2026-10-15）
+
+最新任务7章成功，失败citations中a630af4b847ce3c6120f126d及bf548d2a8277b204f5e9ec6d均精确匹配允许ID去掉e_，正文引用合法。本次仅对24位小写hex且e_前缀版本存在当前证据的引用进行规范化（正文标记及列表），记录citation_prefix_restored；其余未知ID仍拒绝，不近似匹配或新增证据。之后原引用校验及未用元数据清理保持。37项相关测试通过，补丁安装、无活动Wiki任务时重启8002。未调用真实模型、不推送；真实完整生成未验证，原7章缓存保留。
+
+---
+
+# 当前修复：审查与工具选择分离（2026-10-15）
+
+原生工具流程v2：coverage_review先仅注册submit_review并指定函数tool_choice，验证唯一审查；有开放缺口且未finish时以独立请求注册四个补查工具、tool_choice=auto。工具参数再经原Review／Action／身份／路径guard。额外请求由Chapter回调单独扣本章及任务模型预算、记录extra_tool_selection_requests、预留正文一次调用；取消检查在第二请求前执行，client finally关闭。实际工具schema和审查结果计入输入预算；不存在隐式额外无预算请求。两步增加开销，预算不足时按既有限定输出处理，不承诺质量不变。
+
+36项Wiki测试通过，sidecar离线生产链／取消／缓存／引用／旧链回归通过，日志data/tool-calling-v2-check.txt。已安装补丁并在无活动Wiki任务时重启8002。未调用真实服务，真实两步工具返回兼容与质量未验证；无推送。提示hash隔离旧缓存，新分析生效。
+
+---
+
+# 当前修复：移除未使用的合法引用元数据（2026-10-15）
+
+实际失败诊断：unknown_ids为空、inline_not_listed为空，citations多列e_cbe8ef75843bb0c11b0f8fb9且它属于允许证据。宿主只在所有ID合法、正文至少一条引用且正文引用完整列于citations时，去除列表内正文未用条目并记录unused_citation_metadata_removed；正文及来源不变。未知ID、正文漏列和无引用仍拒绝。35项相关测试通过，补丁安装、无活动Wiki任务时重启8002。未真实调用模型，不推送。额外诊断显示之前一次缺submit_review，已有有界修复仍处理，未证实真实所有生成问题消除。
+
+---
+
+# 当前修复：模型响应前异常诊断（2026-10-15）
+
+最新任务失败为text未赋值，原因是模型调用在返回前抛ValueError时，新增诊断仍读取局部text并覆盖原始异常。本次调用前初始化text=None，记录无响应而非空模型输出，有限修复仍传原始错误；保留取消检查。34项Wiki测试通过，新增调用前异常／原始错误保留／两次有界请求／诊断response=None行为。补丁已安装、无活动任务后重启8002。原始被遮蔽错误不能从当前任务终态恢复，本次未真实调用模型，不能声称已修复所有生成失败；未推送。
+
+---
+
+# 当前修复：缺口重要性继承（2026-10-15，未提交／未推送）
+
+实际失败输出把asset-exclusion-policy缺口标supporting，与冻结问题重要性不一致导致gap_identity。本次复用validate_review：已知question_id的gap.importance由原plan.questions继承，然后执行原身份／重复／动作关系校验；未知问题仍拒绝，不改coverage支持判断或源码证据。提示hash隔离旧缓存。33项Wiki测试通过，新增覆盖core继承及未知问题拒绝；已安装补丁，无活动Wiki任务时重启8002，OpenAPI200。未调用真实模型，不推送；需要新分析加载新提示。回退恢复该继承逻辑与提示、重新安装重启sidecar，历史记录保留。
+
+---
+
+# 当前实现：原生章节补查工具调用（2026-10-15，未提交／未推送）
+
+
+
+2026-10-15章节补查改原生tool calling：ExplicitModel在coverage_review单次非流式DeepSeek请求传tools与tool_choice=required，注册submit_review及四个读取／检索工具。同响应必须一份审查、最多三个动作，decode_review_calls转换到原Review／Action契约，再经Chapter.validate_review与tool路径／SHA／预算检查执行，下一轮输入执行证据。拒绝未知工具及非法参数；不放宽guard，不增加模型轮次，SDK重试0、finally关闭client；工具schema计入实际输入预算。正文仍原流式写作，图示与引用逻辑保留。提示hash隔离旧章节缓存。仅增强DeepSeek生产支持；离线注入文本模型保留用于基线测试，不作为生产fallback。
+
+32项Wiki测试通过，sidecar生产入口／章节生成／引用／原生索引／取消／缓存／旧链离线回归通过（外部I/O fake，日志data/tool-calling-sidecar.txt）。新工具解码验证含白名单、非法参数和Review转换；真实服务的并行工具返回、模型质量及Mermaid图示未验证，不保证质量不变。补丁安装并在无活动Wiki任务时重启8002。没有真实模型调用或推送；需要新分析使用新提示。回退需恢复ExplicitModel coverage分支及coverage_review提示，重新安装重启，历史缓存保留。
+
+---
+
+# 当前修复：正文引用修复信息（2026-10-15）
+
+最新最高预算任务失败invalid_page_evidence_reference，旧实现未持久保存失败输出，无法追溯具体引用ID。确认修复调用仅携带截断泛化错误、未携带原输出。本次补齐previous_output及详细缺失／未知／列表差异和白名单，强化写作引用契约，保留引用一致性guard，不自动替换无证据引用。失败输出与诊断单独保存在缓存目录旁-errors目录，不作为可复用结果；发布前检查取消。31项Wiki测试通过，首次诊断写在缓存内触发两项隔离／取消测试失败，已移出缓存并加活动检查，原断言保留。补丁已安装，无活动任务后重启8002。未调用真实模型，不能声称已定位旧响应的具体ID或验证真实质量；新分析使用新提示与修复。未推送。
+
+---
+
+# 当前界面：重新分析展示最新轮次（2026-10-15）
+
+普通用户页面始终选择最新分析Run，历史选择只在后台视图生效；分析进度旁新增“重新分析（生成最新版本）”，复用现有start入口创建新Run并冻结当前配置，已有活动分析时禁用。最新轮次尚无内容时明确提示，不退回旧Wiki。安全重试继续保留既有恢复语义，不冒充重新生成。类型检查和生产构建通过；未触发真实分析，未验证真实生成质量。本轮首次类型检查因按钮函数名误写失败，已修正为现有start入口后通过。刷新首页加载新产物，无后端改动。
+
+---
+
+# 当前配置：最高Wiki预算与完整写作（2026-10-15，未提交／未推送）
+
+按用户要求将本机Wiki资源预算设为契约上限：input72000、output16000、evidence48000、initial_evidence32000、files32、tools100、semantic24、model_calls6、rounds2、task_models288、task_semantic288、structure_models2、page_limit12、max_new_vectors10000、auto_vector_limit100000、index_timeout86400。分块参数、并发2、窗口32保持不变，模型自身输入限制继续生效，优化格式修复次数不属于Wiki资源配置仍维持现有guard。
+
+对照旧版prompts.py恢复H1／H2／H3完整章节、目的和范围、机制与边界详解、表格、源码片段和证据支持的Mermaid架构／流程／时序图。保留固定SHA、来源校验和未知范围，不恢复旧版强制5文件及声称读全文要求。前端已存在严格Mermaid渲染，无需更改。30项Wiki相关测试通过；补丁安装完成、无活动分析后重启8000 PID18344（终端16718）、8002 PID16568（终端8256），两服务200、配置解析通过。未调用真实模型，内容完整性／图示正确性与渲染尚未真实验证；需要新分析使用新冻结配置和提示。已有向量复用，不推送。
+
+回退：恢复.env先前预算或删除对应WIKI_RAG预算字段并重启8000；page_write提示可从工作区历史备份恢复后重新安装补丁及重启8002。保留所有既有未提交改动。
+
+---
+
+# 当前配置：扩大章节输入预算（2026-10-15）
+
+按用户明确要求，本机.env WIKI_RAG_INPUT由默认18000提高为36000；输出、证据、调用次数及向量上限未改变。确认无活动任务后重启8000 PID9504（终端98522）及8002 PID19616（终端22049）；配置解析36000与两服务HTTP200验证通过，无真实模型调用。必须发起新分析以冻结新预算，历史任务预算保留。模型自身输入上限仍生效，本次未验证真实请求能否完成。回退删除WIKI_RAG_INPUT或设为18000并重启8000。
+
+---
+
+# 当前修复：ChapterPlan纯JSON输出（2026-10-15，未提交／未推送）
+
+实际enhanced／auto任务已完成3388个缺失向量，随后模型返回JSON围栏导致ChapterPlan解析失败。本次加强章节计划与共有schema提示：纯JSON对象、无围栏／解释、保持章节身份。复用既有校验与有限修复机制，仅去除完整响应的单层json围栏；含解释、非法JSON或字段不合规仍拒绝，不放宽schema。提示hash变化自动隔离章节缓存，向量缓存保持可复用。
+
+相关30项测试通过；补丁已安装，无活动sidecar任务时重启8002（PID19072，终端58753），OpenAPI200。没有发起真实分析或模型调用。旧失败记录保留；新分析使用新提示与解析。真实模型是否遵循格式尚未验证。
+
+---
+
+# 当前交接：动态向量索引（2026-10-15，未提交／未推送）
+
+用户再次要求重新加载：确认主服务与sidecar均无活动分析后重启，8000 PID8724（终端21772）、8002 PID10200（终端42383）；首页200、enhanced／auto及增强progress路由重新核验通过，未触发分析或付费调用。
+
+已完成缓存优先、仅计算缺失输入的自动索引，复用原Index／向量缓存／sidecar任务与取消机制。按32个输入分窗、最多2个单输入embedding请求并发；完整索引仅在全部向量有效后发布。失败保留成功向量，新分析或同策略重试复用；取消拒绝晚到向量。优化调查复用已完成的结构索引，传输仍遵守原Hit契约。新进度显示缓存／完成／剩余数量；并发过程中未知调用数不记成0。
+
+本机已安装最新增强补丁、构建前端，并在确认无活动分析后重启8000（PID13912，终端9560）和8002（PID20100，终端92475）。实际/api/config为enhanced／auto、首页200、sidecar新增progress路由存在。根.env自动上限10000、并发2、窗口32、索引等待7200秒；旧max_new_vectors=0仅用于reuse_only。修改前备份data/backups/dynamic-index-20261015-040139。历史失败任务冻结旧策略，切换后必须发起新分析，409门禁不改写历史。
+
+离线验证：统一检查架构、类型、隔离构建、186后端及15浏览器通过；最终增补策略测试与停止处理后全后端187项通过。原生LocalDB／ASGI／FAISS回归、增强sidecar生产入口、自动缺失计算及优化复用通过（外部服务fake）。日志data/dynamic-index-final-check.txt、dynamic-index-backend-final.txt、dynamic-index-sidecar-final.txt、dynamic-index-native-final.txt、dynamic-index-build.txt。所有既有未提交改动保留，无推送、无真实embedding或付费模型调用。
+
+范围：上限按单次构建缺失的唯一输入计，超过10000在调用前停止，可显式调整；并非无限预算。32为调度窗口，不是服务商多输入批量API。未验证真实服务限流、计费、SDK内部重试和内容质量；尚未实现自动降速或无限重试。回退：.env设置WIKI_RAG_INDEX_MODE=reuse_only并重启8000，保留缓存，仍须新分析；整体回退为WIKI_RETRIEVAL_MODE=legacy并重启8000。不删除历史或向量。
+
+---
+
+# 当前交接：清理分析历史与进度用时（2026-10-15，未提交／未推送）
+
+用户明确选择清理所有项目的历史分析记录，并要求在分析进度旁显示截图形式的“用时44秒 ›”。已通过新增DELETE /api/analysis-history删除23条已结束的项目Run（包括其内嵌Wiki／报告），确认剩余项目Run为0；仓库、岗位JD、独立保存的方向、聊天、证据及其余业务表数量保持不变。退役简历Run不属于本次清理，活动Run或仍占用worker的终态任务受到保护。清理前SQLite一致性备份：data/backups/before-clear-analysis-history-20261015-032701.db。清理接口以function作用域提交后返回，避免页面刷新看到未提交旧记录；重复清理返回0，无重复删除。原始操作回执data/history-cleanup-receipt.txt含首次读到事务旧快照的诊断，后续正确复核见data/history-cleanup-verified.txt。
+
+进度旁RunTiming组件显示灰色秒数／箭头，分析期间每秒更新，点击展开可读阶段摘要；成功、失败、取消固定本轮时间，重试重置时钟但保留可复用Wiki。复用Run.result，无数据库迁移；worker启动／finally与cancel／retry消费者同步处理。旧历史没有真实结束时间时显示未知，不伪造时间。新增清除所有项目分析历史按钮，清理后刷新工作区、卸载旧Wiki及浮窗，保留对话记录。
+
+验证：统一离线检查通过，181后端（13.17秒）、13浏览器（27.6秒）、架构、类型和隔离构建；补充实时计时场景后14浏览器最终通过（26.7秒），端点事务作用域修正后定向2项通过。首次时钟测试未暂停虚拟时间而自然经过1秒，固定测试时钟后通过，未放宽计时断言。全项目清理／保护活动任务及worker／保留退役任务／幂等、失败计时／重试／取消冻结行为有测试。前端生产构建完成；无活动分析时重启8000加载后端（PID1784，终端28397），8002增强服务未改变。实际首页200，mode仍enhanced，DB清理及其他表不变已核对；没有调用真实模型、增加向量预算或推送。日志data/history-timing-full-check.txt、history-timing-e2e-final.txt、history-timing-build.txt、history-cleanup-verified.txt。
+
+PRODUCT／architecture／DECISIONS／BACKLOG已同步范围和恢复语义。本轮开始时已有Wiki RAG等未提交改动全部保留。
+
+---
+
+# 当前运行：增强Wiki已启用（2026-10-15，未提交／未推送）
+
+用户明确要求解决“增强sidecar补丁未安装”，保证下一次新分析使用新增强代码。本次已在原RepoInsight路径安装--wiki-rag补丁与4个锁定Tree-sitter包；保存原.env及7个sidecar目标文件于data/backups/wiki-rag-enable-20261015-031144（Git忽略，无密钥输出）。原sidecar未提交的定制保留，使用现有精确锚点加法安装，记录api/repocareer_wiki_install.json。根.env持久设置WIKI_RETRIEVAL_MODE=enhanced、WIKI_RAG_MAX_NEW_VECTORS=0；DeepSeek provider／model原配置保持，没有执行分析或付费调用。
+
+确认原主Run及sidecar无活动Wiki任务后，核对PID／模块／端口并重启两个本地服务：8000 PID18728（终端87625），8002 PID10692（终端80265）。前端生产构建已完成，新增范围提示可加载。实际运行API /api/config返回enhanced；sidecar OpenAPI确认增强cache／cancel路由和revision／workspace契约；实际DeepWikiOpen.repo_payload纯构造验证next_payload_mode=enhanced、固定SHA与预算0，没有POST任务。首页和/models/config均HTTP200。新mode不能命中unknown旧Wiki，也不会静默fallback。
+
+历史任务仍冻结原mode；新增retry门禁在切换后返回409，明确提示回项目设置发起新分析，避免旧“安全重试”继续执行legacy。没有更改历史request、Wiki、失败记录或幂等身份。新任务按当前增强配置创建。第一次新chunk缺失向量时，预算0会在embedding前明确失败；本次不擅自增加向量预算。真实内容／召回／模型限额仍未验证。
+
+验证：统一离线scripts/check.py --e2e通过：179后端（12.91秒）、12浏览器（27.7秒）、架构A01/A02、类型和隔离构建；临时sidecar真实入口／原生FAISS／真实ChatStreamer参数（外部I/O fake）／取消／补查／缓存／安装保护再次通过。启用后的首轮全后端有3项legacy fixture受生产.env enhanced影响失败，已在测试启动和check环境显式隔离legacy，增强测试自行指定mode；原断言／门禁保留，最终全通过。日志data/wiki-rag-enable-full-check.txt、wiki-rag-enable-sidecar-check.txt、wiki-rag-enable-check.txt、wiki-rag-enable-build.txt、wiki-rag-sidecar-parser-install.txt。本轮没有推送远端。
+
+回退仍为.env改legacy并重启8000，历史和旧新索引保留；旧enhanced任务会同样被mode门禁要求新分析。详细安装／缓存退出条件见architecture。
+
+---
+
+# 当前交接：Wiki RAG P0–P5（2026-10-15，未提交／未部署）
+
+本轮工作在C:/Users/RS/Documents/ChatGPT/RepoInsight，分支codex/repoinsight，开始HEAD fa25504，开始Git工作区干净。读取新版开发规则、PRODUCT／architecture／当前STATUS及生产调用方；docs/wiki-rag-spec.md原不存在，按用户明确请求从所附Implementation_Spec原文建立后执行。所有本轮变化保留未提交；没有推送、远端权限变更、真实付费调用、修改用户.env。实现／验证阶段没有部署或替换运行服务；随后按用户“打开项目”授权启动本地服务，见下文。
+
+- P0：核对DeepWiki实际基线d92819a9c9f3b99416e3580ff235fc9d3adf8b89与页面→research_chat隐式检索链，保留旧入口／原生回归，增加精确锚点和安装hash守卫的--wiki-rag可复现补丁。所有安装测试仅临时克隆，未修改data/deepwiki-open。
+- P1：锁定Tree-sitter依赖，Python／JS／JSX／TS／TSX结构与Markdown标题分块，UTF-8／CRLF／重复文本精确位置、长函数和显式fallback；manifest／chunk身份绑定固定版本与配置。复用原raw Index、同配置native LocalDB完整输入向量、内容缓存与FAISS。dry-run先于代码embedding，预算0缺失时调用数0；旧manifest存活但向量缺失也重新守预算。新增只读dry-run命令。
+- P2–P3：白名单计划模板生成1–4个问题，路径／符号不走语义embedding，短查询沿用RRF60，通道／候选／文件／正文预算；区间去重和父函数补齐，过长父体仅补头部与局部并标不完整，证据保留SHA、文件hash、索引、精确来源、问题归属和省略记录。
+- P4：原TaskRegistry／generate_repo_wiki／_generate_page接线，最多3次覆盖审查、2轮补查、每章6次模型（含共享修复）及20工具／6语义／8文件，为最终写作保留请求槽。显式证据直接写作，引用白名单／固定SHA链接、有限页未确认提示，失败页不计有效成功；并发失败回收子任务。冻结工作区／快照／provider／model／预算／模板，取消和输入变更拒绝晚到保存。仅充分且引用核对通过的章节可复用；新旧Wiki缓存隔离，增强不静默回退。
+- P5：36项Wiki结构／预算／适配／隔离行为测试；全后端最终178项通过（13.49秒），架构A01/A02通过。统一scripts/check.py --e2e通过（该次176后端、TypeScript、隔离构建、12浏览器27.3秒）；后续追加两个预算／分配测试与守卫后，全后端178项重跑通过，前端代码未再变更。临时sidecar生产入口、真实ChatStreamer输出参数／SDK重试关闭、原生FAISS／LocalDB／ASGI回归、dry-run CLI、取消／更正／失败／工作区／重试／安装幂等及改动拒绝全部通过。真实内容命令缺显式授权／预算时在任何I/O前拒绝。
+
+12个人工定义离线案例A/B/C逐例结果保存在docs/evaluations/wiki-rag-offline.json，说明见同名md。A执行旧页面／research_chat／native RAG／FAISS，预置相同快照文档并加公平上下文上限；所有向量和模型响应为离线桩。C恢复B的首轮材料缺口，11个有答案案例覆盖100%，无答案保持50%并no_progress，C没有相对A的覆盖提升，不宣称文章质量提升。来源／版本／越界及禁止关系字面门槛通过；语义和真实内容仍须人工验证。实际派发与预算尝试分开记录，服务Token未知为null。
+
+启用：按architecture先安装sidecar锁定依赖及--wiki-rag补丁，使用wiki-index-dry-run核对实际缺失向量，再显式设置WIKI_RETRIEVAL_MODE=enhanced与允许的新向量预算，按原命令重启两个服务／构建前端。回退：legacy并重启后端，保留旧新索引、页面和历史，不删除数据。默认legacy及新向量预算0保持。当前增强仅公开GitHub固定SHA＋DeepSeek；上传／其他provider增强显式拒绝。真实embedding召回、真实仓库端到端性能／计费、文章关系质量和运行服务加载未验证；真实内容命令使用受控离线向量比较模型正文，不替代真实embedding验收。
+
+最终日志：data/wiki-rag-full-final-check.txt、wiki-rag-backend-final.txt、wiki-rag-sidecar-final.txt、wiki-rag-native-index-final.txt、wiki-rag-evaluation-final.txt、wiki-rag-real-opt-in-guard.txt。既有Google SDK弃用、Mermaid大包及颜色环境提示保留，非检查失败；缺可选MLflow不会替代本任务任何验证。PRODUCT、architecture、DECISIONS、BACKLOG、README、.env.example及依赖锁已更新，不记录密钥。
+
+用户随后要求打开项目：核对8000／8002均未监听，从新RepoInsight目录启动原标准uvicorn入口（8000 PID16956，8002 PID16356）。8000首页HTTP200且标题RepoInsight；经实际DeepWikiOpen客户端只读GET /models/config确认127.0.0.1:8002 HTTP200。已请求Codex打开浏览器http://127.0.0.1:8000/及新路径README。后端加载当前源码，但增强sidecar补丁未安装、frontend/dist未替换、默认legacy未改变。没有自动重试用户报错任务或触发模型／embedding；只证明服务连接恢复，不证明真实模型限额／生成质量。启动日志data/server-wiki-open.*.log，sidecar终端会话21948。复杂后台启动命令被自动策略拒绝后，改用可管理的前台终端标准命令启动sidecar，已成功；未绕过权限安装补丁。
+
+---
+
 # 当前发布：RepoInsight（2026-10-14）
 
 用户选择RepoInsight并授权创建RRX12/RepoInsight公开仓库、上传最新版。包含项目理解/优化讨论改造、简历退役、分步设置、岗位JD修改及本次品牌更新。原RepoCareer远端保留，不强推、不修改其权限。

@@ -6,7 +6,7 @@ from pathlib import Path
 BASELINE='d92819a9c9f3b99416e3580ff235fc9d3adf8b89'
 MARKER='\n# RepoCareer raw retrieval extension v1\nfrom api.repocareer_raw_routes import router as repocareer_raw_router\napp.include_router(repocareer_raw_router)\n'
 
-def install(sidecar):
+def install(sidecar,wiki_rag=False):
     sidecar=Path(sidecar).resolve()
     actual=subprocess.check_output(['git','-C',str(sidecar),'rev-parse','HEAD'],text=True).strip()
     if actual!=BASELINE:raise ValueError('Unsupported sidecar revision; review compatibility before installation')
@@ -21,6 +21,11 @@ def install(sidecar):
         if '# RepoCareer raw retrieval extension' in source:raise ValueError('Unknown installed extension; not overwriting')
         target.write_text(source+MARKER,encoding='utf-8')
 
+    if wiki_rag:
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('install_wiki_rag',Path(__file__).with_name('install_wiki_rag.py'))
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);module.install_enhanced(sidecar)
+
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--sidecar',type=Path,required=True)
-    args=p.parse_args();install(args.sidecar);print('Installed; restart is a separate explicit operation. No model called.')
+    p.add_argument('--wiki-rag',action='store_true');args=p.parse_args();install(args.sidecar,args.wiki_rag);print('Installed; restart is a separate explicit operation. No model called.')

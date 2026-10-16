@@ -3,6 +3,9 @@ import tempfile
 from pathlib import Path
 os.environ['REPOINSIGHT_DATA']=tempfile.mkdtemp(prefix='repocareer-tests-')
 os.environ['REPOINSIGHT_DEMO']='true'
+# Legacy fixtures explicitly test the compatibility path, independent of the local .env.
+# Enhanced behavior tests select their mode with monkeypatch.
+os.environ['WIKI_RETRIEVAL_MODE']='legacy'
 from fastapi.testclient import TestClient
 import pytest
 from backend.app.main import app
@@ -25,8 +28,9 @@ def wid(client):
 @pytest.fixture(autouse=True)
 def isolated_writer_sources(request,monkeypatch,tmp_path):
     # Only writer contract tests: run real shared analysis, fake external I/O only.
-    if request.module.__name__.split('.')[-1] not in ('test_shared_analysis','test_project_flow'):return
+    if request.module.__name__.split('.')[-1] not in ('test_shared_analysis','test_project_flow','test_advisor'):return
     from backend.tests.source_fixture import Reader,Retriever
     monkeypatch.setattr('backend.app.shared_analysis.CodeRetrieval',Retriever)
     monkeypatch.setattr('backend.app.shared_analysis.cache_directory',lambda:tmp_path/'analysis')
+    monkeypatch.setattr('backend.app.optimization_review.cache_directory',lambda:tmp_path/'analysis')
     monkeypatch.setattr('backend.app.source_reader.SourceReader.resolve_revision',lambda self,repo,ref=None:{'commit_sha':'a'*40,'status':'resolved'})

@@ -27,3 +27,4 @@
 .wiki-markdown pre{overflow:auto;white-space:pre-wrap}.wiki-markdown table{display:block;overflow:auto}
 
 .project-setup{max-width:880px;margin:0 auto 24px}.setup-steps{display:flex;align-items:center;gap:12px;margin:16px 0}.setup-steps button[aria-current=step]{background:#174e40;color:white}.setup-actions{flex-wrap:wrap}@media(max-width:650px){.setup-steps{gap:6px}.setup-steps button{padding:8px;font-size:12px}.setup-actions button{width:100%}}
+.run-panel>.row{flex-wrap:wrap}.run-timing{position:relative}.run-timing-button{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:#92969a;font-size:14px;padding:4px}.run-timing-button span{font-size:20px}.run-timing-details{position:absolute;top:100%;left:0;z-index:30;width:min(340px,75vw);max-height:260px;overflow:auto;background:white;border:1px solid #e5e7eb;box-shadow:0 8px 24px #0001;border-radius:8px;padding:12px}.run-timing-details p{margin:6px 0;font-size:13px}

@@ -112,7 +112,16 @@ def direction_context(s,wid,iid):
     if not iid:return None
     item=require(s,Improvement,iid,wid)
     if item.details.get('deleted'):raise HTTPException(409,'方向已删除，请选择其他方向')
-    return {'id':item.id,'kind':'optimization_proposal','title':item.details.get('title',item.details.get('direction','优化方向')),'details':{k:item.details[k] for k in ('problem','business_problem','proposal','current_design','alternatives','tradeoffs','risks','validation','validation_plan','assumptions','version','implementation') if k in item.details},'status':item.status,'fact_boundary':'优化方向是讨论方案，不能视为已经实现；完成声明只代表用户报告'}
+    details={k:item.details[k] for k in ('problem','business_problem','proposal','current_design','alternatives','tradeoffs','risks','validation','validation_plan','assumptions','version','implementation') if k in item.details}
+    plan=item.details.get('v2_plan')
+    if plan:
+        def brief(text):
+            if len(text.encode('utf-8'))<=600:return text
+            part=text
+            while len(part.encode('utf-8'))>570:part=part[:-1]
+            return part+'（摘要省略）'
+        details={'goal':brief(plan['goal']),'current_design':brief(plan['current_design']['statement']),'recommended_technology':brief(plan['recommended_design']['chosen_option']),'rationale':brief(plan['recommended_design']['rationale']),'tradeoffs':[brief(o['tradeoffs']) for o in plan['technical_options'][:3]],'assumptions':[brief(a) for a in plan['assumptions'][:3]],'sources':[{'source_id':x['source_id'],'locator':x['locator'],'content_hash':x['content_hash']} for x in item.details.get('source_summary',[])[:6]],'implementation':item.details.get('implementation')}
+    return {'id':item.id,'kind':'optimization_proposal','title':item.details.get('title',item.details.get('direction','优化方向')),'details':details,'proposal_hash':digest(item.details),'status':item.status,'fact_boundary':'优化方向是讨论方案，不能视为已经实现；完成声明只代表用户报告'}
 
 @serialized
 def begin(wid,cid,body):

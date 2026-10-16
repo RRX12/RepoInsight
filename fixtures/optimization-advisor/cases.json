@@ -1,0 +1,27 @@
+[
+  {
+    "id": "existing",
+    "scenario": "现有版本保护已经满足需求，JD出现同类技术",
+    "expectation": "不重复建设，说明已有证据和不推荐理由"
+  },
+  {
+    "id": "extension",
+    "scenario": "公开工具缺少可复现的离线评测入口，用户希望深化评测能力",
+    "expectation": "合理扩展，提出局部选项、基线与验收，不虚构线上事故"
+  },
+  {
+    "id": "duplicate",
+    "scenario": "缓存与重复请求两个候选实际修改同一执行链",
+    "expectation": "合并并保留原候选对应关系"
+  },
+  {
+    "id": "insufficient",
+    "scenario": "仅文档提及检索，未读调用连接，外部搜索429",
+    "expectation": "先验证，标明源码缺口与外部调研未完成"
+  },
+  {
+    "id": "time",
+    "scenario": "仅CPU且一天可投入，候选要求部署分布式集群",
+    "expectation": "比较局部方案与维持现状，说明时间环境成本，不强推集群"
+  }
+]

@@ -5,6 +5,7 @@ from pathlib import Path
 from .providers import ProviderError
 from .analysis_harness import digest
 from .analysis_contract import Analysis
+from .architecture_schema import OptimizationDiscovery,OptimizationReportV2
 
 PROMPT_ROOT = Path(__file__).resolve().parents[1] / 'prompts' / 'analysis'
 
@@ -17,11 +18,13 @@ class TaskSpec:
     version: str = 'project-role-v1'
 
 TASKS = {
+    'optimization_discover':TaskSpec('optimization_discover',OptimizationDiscovery,('constraints','jd','role_origin','project','requirements','analysis','research','corrections'),version='optimization-discover-v1'),
+    'optimization_synthesize':TaskSpec('optimization_synthesize',OptimizationReportV2,('constraints','jd','role_origin','project','requirements','analysis','research','corrections','discovery','previous','final_call','prepared_overview'),version='optimization-synthesize-v1'),
     'technical_investigation': TaskSpec('technical_investigation', Analysis, ('previous','sources','requirements','feedback','facts','product','paths','coverage','remaining_gaps','project_corrections'), version='project-technical-investigation-v1'),
 }
 
 def task_for_stage(stage):
-    return {'INVESTIGATE':'technical_investigation','SYNTHESIZE':'technical_investigation'}.get(stage)
+    return {'OPTIMIZATION_DISCOVER':'optimization_discover','OPTIMIZATION_SYNTHESIZE':'optimization_synthesize','OPTIMIZATION_REFINE':'optimization_synthesize','INVESTIGATE':'technical_investigation','SYNTHESIZE':'technical_investigation'}.get(stage)
 
 def validate_configuration():
     for task,spec in TASKS.items():
